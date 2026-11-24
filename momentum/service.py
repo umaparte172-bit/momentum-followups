@@ -258,7 +258,7 @@ class Application:
                         if reason:
                             self.ledger.outcome(batch, original["id"], "skipped", reason)
                         elif dry:
-                            self.ledger.outcome(batch, original["id"], "dry-run", "Eligibility rechecked; nothing sent")
+                            self.ledger.outcome(batch, original["id"], "dry-run", "Dry run: lead rechecked and ready, nothing sent. Turn off Dry run to do it for real.")
                         elif self.ledger.reserve(current, batch, config):
                             reserved = True
                             detail = crm.send(current)
