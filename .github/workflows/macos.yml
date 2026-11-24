@@ -1,0 +1,57 @@
+name: macOS
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15]
+        python: ["3.11", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Shell script syntax
+        run: |
+          bash -n setup-macos.sh
+          bash -n start-macos.command
+          bash -n check-macos.command
+          bash -n install-extension-macos.command
+      - name: Run the shipped setup script
+        run: bash setup-macos.sh
+      - name: Setup writes the live configuration from the Momentum address and name
+        env:
+          MOMENTUM_HOME: ${{ runner.temp }}/live-home
+          MOMENTUM_CRM: yourstore.udccrm.com
+          MOMENTUM_ACCOUNT: Alex Morgan Rivera
+        run: |
+          bash setup-macos.sh
+          .venv/bin/python -c "import json, os; c = json.load(open(os.path.join(os.environ['MOMENTUM_HOME'], 'config.json'))); assert c['allowed_origin'] == 'https://yourstore.udccrm.com' and c['login_url'].endswith('/acrm/servlet/login') and c['account_name'] == 'Alex Morgan Rivera' and c['mode'] == 'live', c"
+      - name: Extension install script copies a loadable extension
+        run: |
+          HOME_BACKUP="$HOME"; export HOME="$RUNNER_TEMP/home"; mkdir -p "$HOME"
+          bash install-extension-macos.command
+          test -f "$HOME/MomentumBridge-extension/manifest.json" && test -f "$HOME/MomentumBridge-extension/icons/icon128.png"
+          export HOME="$HOME_BACKUP"
+      - name: Install test extras
+        run: .venv/bin/python -m pip install '.[test]'
+      - name: Test suite
+        run: .venv/bin/python -m pytest tests -q
+      - name: Demo self-check (read-only)
+        env:
+          MOMENTUM_HOME: ${{ runner.temp }}/momentum-home
+        run: .venv/bin/python -m momentum.server --check
+      - name: Server smoke test
+        env:
+          MOMENTUM_HOME: ${{ runner.temp }}/momentum-smoke
+        run: |
+          .venv/bin/python -m momentum.server --port 8765 &
+          for i in $(seq 1 20); do curl -fs -H "Host: 127.0.0.1:8765" http://127.0.0.1:8765/ -o /dev/null && break; sleep 1; done
+          curl -fs -H "Host: 127.0.0.1:8765" http://127.0.0.1:8765/api/state | head -c 300
+          kill %1

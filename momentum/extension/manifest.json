@@ -1,0 +1,48 @@
+{
+  "manifest_version": 3,
+  "name": "Momentum Bridge",
+  "version": "1.7.0",
+  "description": "Lets the local Momentum follow-up tool use the Momentum CRM tab that is already signed in, so no second login is needed.",
+  "permissions": [
+    "tabs",
+    "scripting",
+    "alarms",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*.udccrm.com/*",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.udccrm.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Momentum Bridge",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  }
+}

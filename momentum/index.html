@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#14a800">
+<meta name="description" content="Momentum Follow-ups — a local CRM outreach workspace with review, authorization, and audit controls.">
+<title>Momentum — Follow-up campaigns</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='13' fill='%2314a800'/%3E%3Cpath d='M11 32V17l13 10 13-10v15' fill='none' stroke='white' stroke-width='3.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/bootstrap.min.css">
+<link rel="stylesheet" href="assets/bootstrap-icons.min.css">
+<link rel="stylesheet" href="assets/driver.css">
+<style>
+:root{
+  --up-green:#14a800;--up-green-dark:#108a00;--up-green-soft:#f2f7f2;--up-green-tint:#e3f5e1;
+  --up-ink:#001e00;--up-muted:#5e6d55;--up-line:#d5e0d5;--up-bg:#f9f9f9;--up-radius:16px;
+  --bs-primary:#14a800;--bs-primary-rgb:20,168,0;--bs-body-color:#001e00;--bs-body-bg:#f9f9f9;
+  --bs-body-font-family:"Neue Montreal",Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --bs-body-font-size:1rem;--bs-body-line-height:1.5;--bs-border-color:#d5e0d5;--bs-border-radius:8px;--bs-border-radius-sm:6px;--bs-border-radius-lg:16px;
+  --bs-link-color:#108a00;--bs-link-hover-color:#0b6600;--bs-link-color-rgb:16,138,0;--bs-link-hover-color-rgb:11,102,0;
+  --bs-secondary-color:#5e6d55;
+}
+html{scroll-behavior:smooth;scroll-padding-top:88px}
+body{background:var(--up-bg);-webkit-font-smoothing:antialiased}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+h1,h2,h3{color:var(--up-ink)}
+.text-muted-up{color:var(--up-muted)}
+
+/* Components, restyled: pill buttons, soft cards, quiet inputs */
+.btn{--bs-btn-font-size:.9375rem;--bs-btn-font-weight:500;--bs-btn-padding-x:1.35rem;--bs-btn-padding-y:.5rem;--bs-btn-border-radius:999px;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;white-space:nowrap;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s}
+.btn-primary{--bs-btn-bg:#14a800;--bs-btn-border-color:#14a800;--bs-btn-hover-bg:#108a00;--bs-btn-hover-border-color:#108a00;--bs-btn-active-bg:#0b6600;--bs-btn-active-border-color:#0b6600;--bs-btn-disabled-bg:#d5e0d5;--bs-btn-disabled-border-color:#d5e0d5;--bs-btn-disabled-color:#5e6d55;--bs-btn-focus-shadow-rgb:20,168,0}
+.btn-outline-primary,.btn-outline-success{--bs-btn-color:#108a00;--bs-btn-border-color:#14a800;--bs-btn-hover-bg:#f2f7f2;--bs-btn-hover-color:#0b6600;--bs-btn-hover-border-color:#108a00;--bs-btn-active-bg:#e3f5e1;--bs-btn-active-color:#0b6600;--bs-btn-active-border-color:#108a00;--bs-btn-disabled-color:#8a9a86;--bs-btn-disabled-border-color:#d5e0d5;--bs-btn-focus-shadow-rgb:20,168,0}
+.btn-outline-secondary{--bs-btn-color:#001e00;--bs-btn-border-color:#d5e0d5;--bs-btn-bg:#fff;--bs-btn-hover-bg:#f2f7f2;--bs-btn-hover-color:#001e00;--bs-btn-hover-border-color:#14a800;--bs-btn-active-bg:#e3f5e1;--bs-btn-active-color:#001e00;--bs-btn-disabled-color:#8a9a86;--bs-btn-disabled-border-color:#e5ece5}
+.btn-outline-danger{--bs-btn-color:#b42318;--bs-btn-border-color:#e7b7b2;--bs-btn-hover-bg:#fdf0ef;--bs-btn-hover-color:#b42318;--bs-btn-hover-border-color:#b42318;--bs-btn-active-bg:#fbe3e1;--bs-btn-active-color:#b42318}
+.btn-link{--bs-btn-color:#108a00;--bs-btn-hover-color:#0b6600;--bs-btn-font-weight:500;text-decoration:none}
+.btn-link:hover{text-decoration:underline}
+.btn-sm{--bs-btn-padding-x:1rem;--bs-btn-padding-y:.3rem;--bs-btn-font-size:.875rem}
+.btn.is-loading{pointer-events:none}.btn.is-loading>.bi{display:none}
+.btn.is-loading::before{content:"";width:1em;height:1em;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:up-spin .7s linear infinite}
+@keyframes up-spin{to{transform:rotate(360deg)}}
+.form-control,.form-select{border-color:#aebfa9;border-radius:8px;color:var(--up-ink);padding:.6rem .85rem}
+.form-control::placeholder{color:#7d8d78}
+.form-control:focus,.form-select:focus{border-color:#14a800;box-shadow:0 0 0 .2rem rgba(20,168,0,.18)}
+.form-control:disabled,.form-select:disabled{background-color:#f2f4f2;border-color:#e0e6e0}
+.form-label{font-weight:500;margin-bottom:.35rem}
+.form-check-input{border-color:#7d8d78}
+.form-check-input:checked,.form-check-input[type=checkbox]:indeterminate{background-color:#14a800;border-color:#14a800}
+.form-check-input:focus{border-color:#14a800;box-shadow:0 0 0 .2rem rgba(20,168,0,.18)}
+.form-switch .form-check-input{width:2.5em;height:1.35em}
+.badge{font-weight:500;font-size:.8125rem;border-radius:999px;padding:.35em .8em}
+.badge-soft{background:#e4ebe4;color:#001e00}
+.badge-green{background:var(--up-green-tint);color:#0b6600}
+.card{--bs-card-border-radius:16px;--bs-card-inner-border-radius:15px;--bs-card-border-color:#d5e0d5;--bs-card-cap-bg:transparent;--bs-card-cap-padding-x:1.5rem;--bs-card-cap-padding-y:1.25rem;--bs-card-spacer-x:1.5rem;--bs-card-spacer-y:1.5rem;box-shadow:none}
+.card-header{border-bottom:1px solid #e5ece5}
+.card-footer{background:transparent;border-top:1px solid #e5ece5;color:var(--up-muted);font-size:.875rem}
+.card-title-up{font-size:1.25rem;font-weight:500;margin:0;letter-spacing:-.005em}
+.card-sub{color:var(--up-muted);margin:.25rem 0 0;font-size:.9375rem}
+.accordion{--bs-accordion-border-color:#d5e0d5;--bs-accordion-border-radius:12px;--bs-accordion-inner-border-radius:11px;--bs-accordion-btn-padding-y:.9rem;--bs-accordion-btn-padding-x:1.1rem;--bs-accordion-active-bg:#f2f7f2;--bs-accordion-active-color:#001e00;--bs-accordion-btn-focus-box-shadow:0 0 0 .2rem rgba(20,168,0,.18)}
+.messages .accordion-item{margin-bottom:.6rem;border-radius:12px;overflow:hidden}
+.accordion-button{gap:.6rem;font-weight:500}
+.nav-tabs{--bs-nav-tabs-border-color:#d5e0d5;--bs-nav-tabs-link-active-border-color:transparent transparent #14a800;border-bottom:1px solid #d5e0d5}
+.nav-tabs .nav-link{color:var(--up-muted);font-weight:500;border:0;border-bottom:3px solid transparent;padding:.75rem 1.1rem;margin-bottom:-1px;border-radius:0}
+.nav-tabs .nav-link:hover{color:#001e00;border-bottom-color:#b9c9b5}
+.nav-tabs .nav-link.active{color:#001e00;background:transparent;border-bottom-color:#14a800}
+.table{--bs-table-bg:transparent;--bs-table-hover-bg:#f2f7f2}
+.table thead th{color:var(--up-muted);font-weight:500;font-size:.875rem;border-bottom-color:#d5e0d5;background:transparent}
+.table td{vertical-align:middle}
+.alert{border-radius:12px}
+.alert:empty{display:none}
+
+/* Top bar */
+.topbar{position:sticky;top:0;z-index:1030;background:#fff;border-bottom:1px solid var(--up-line)}
+.topbar-inner{max-width:1240px;margin:0 auto;padding:0 1.5rem;min-height:68px;display:flex;align-items:center;gap:2rem}
+.brand{display:flex;align-items:center;gap:.65rem;color:var(--up-ink);text-decoration:none;font-size:1.25rem;font-weight:600;letter-spacing:-.01em}
+.brand:hover{color:var(--up-ink)}
+.brand-symbol{width:34px;height:34px;flex:none}
+.main-nav{display:flex;gap:.25rem;margin:0;padding:0;list-style:none;height:68px}
+.main-nav a{display:flex;align-items:center;gap:.5rem;height:100%;padding:0 1rem;color:#3d4d38;text-decoration:none;font-weight:500;border-bottom:3px solid transparent;transition:color .15s,border-color .15s}
+.main-nav a:hover{color:var(--up-ink);border-bottom-color:#b9c9b5}
+.main-nav a.active{color:var(--up-ink);border-bottom-color:var(--up-green)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:.9rem}
+.avatar-me{width:36px;height:36px;border-radius:50%;background:var(--up-green-tint);color:#0b6600;display:grid;place-items:center;font-weight:600;font-size:.875rem}
+
+.page{max-width:1240px;margin:0 auto;padding:2rem 1.5rem 6rem}
+.page-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:1.25rem;margin-bottom:1.5rem}
+.page-head h1{font-size:2.125rem;font-weight:500;letter-spacing:-.015em;margin:0 0 .35rem}
+.page-head p{margin:0;color:var(--up-muted);font-size:1.0625rem}
+.head-actions{display:flex;flex-wrap:wrap;gap:.6rem}
+
+/* Stepper */
+.stepper{display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap}
+.jitem{display:flex;align-items:center;gap:.65rem;color:var(--up-muted);font-weight:500}
+.jnum{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#fff;border:2px solid #b9c9b5;color:var(--up-muted);font-size:.875rem;font-weight:600;transition:all .25s}
+.jitem.current{color:var(--up-ink)}.jitem.current .jnum{background:var(--up-green);border-color:var(--up-green);color:#fff}
+.jitem.done .jnum{background:var(--up-green-tint);border-color:var(--up-green);color:#0b6600}
+.jline{flex:0 1 56px;height:2px;border-radius:2px;background:#d5e0d5;position:relative;overflow:hidden}
+.jline::after{content:"";position:absolute;inset:0;background:var(--up-green);transform:scaleX(var(--fill,0));transform-origin:left;transition:transform .35s ease}
+
+/* Lead list */
+.search-pill .form-control{border-radius:0 999px 999px 0;border-left:0;padding-left:.25rem}
+.search-pill .input-group-text{border-radius:999px 0 0 999px;background:#fff;border-color:#aebfa9;border-right:0;color:var(--up-muted);padding-left:1rem}
+.search-pill:focus-within .input-group-text,.search-pill:focus-within .form-control{border-color:#14a800}
+.search-pill:focus-within{box-shadow:0 0 0 .2rem rgba(20,168,0,.18);border-radius:999px}
+.search-pill .form-control:focus{box-shadow:none}
+.lead-list{max-height:460px;overflow-y:auto;border:1px solid #d5e0d5;border-radius:12px;scrollbar-width:thin}
+.lead-row{display:flex;align-items:center;gap:1rem;padding:.85rem 1.1rem;margin:0;border-bottom:1px solid #e5ece5;cursor:pointer;transition:background-color .12s}
+.lead-row:last-child{border-bottom:0}
+.lead-row:hover{background:#f2f7f2}
+.lead-row:has(.lead:checked){background:#f2f9f1}
+.lead-row .form-check-input{width:1.25rem;height:1.25rem;margin:0;flex:none}
+.avatar{width:40px;height:40px;border-radius:50%;background:var(--up-green-tint);color:#0b6600;display:grid;place-items:center;font-size:.8125rem;font-weight:600;flex:none}
+.lead-row strong{display:block;font-weight:500;line-height:1.3}
+.lead-row:hover strong{color:var(--up-green-dark)}
+.lead-row small{color:var(--up-muted);font-size:.875rem}
+.empty{text-align:center;color:var(--up-muted);padding:2.5rem 1rem}
+.empty i{display:block;font-size:2rem;margin-bottom:.5rem;color:#9fb39a}
+.empty strong{display:block;color:var(--up-ink);font-weight:500;margin-bottom:.15rem}
+.hint{font-size:.875rem;color:var(--up-muted);min-height:1.2em;margin:.5rem 0 0}
+.message-body{white-space:pre-wrap;font-family:inherit;margin:0;font-size:.9375rem}
+.chip{display:inline-flex;align-items:center;gap:.5rem;border:1px solid #d5e0d5;border-radius:999px;padding:.4rem .9rem;background:#fff;font-size:.9375rem}
+.table-responsive{max-height:440px}
+.fade-in{animation:up-fade .25s ease}@keyframes up-fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* Right rail */
+.rail{position:sticky;top:92px}
+.stat-row{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;padding:.8rem 0;border-bottom:1px solid #e5ece5}
+.stat-row:last-child{border-bottom:0}
+.stat-row .label{color:var(--up-muted)}
+.stat-value{font-size:1.75rem;font-weight:500;letter-spacing:-.02em;line-height:1.1;font-variant-numeric:tabular-nums}
+.stat-note{display:block;color:var(--up-muted);font-size:.8125rem;text-align:right}
+.option-box{border:1px solid #d5e0d5;border-radius:12px;padding:.9rem 1rem .9rem 4rem;margin-bottom:.75rem;transition:border-color .15s,background-color .15s}
+.option-box:has(input:checked){border-color:#14a800;background:#f7fbf6}
+.option-box .form-check-input{margin-left:-3rem;margin-top:.15rem}.option-box .form-check-label{display:block}
+.batch-controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem}
+.batch-controls .btn{padding-inline:.5rem;white-space:normal;--bs-btn-font-size:.875rem}
+footer.foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:.75rem;margin-top:2rem;color:var(--up-muted);font-size:.875rem}
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:1030;background:#fff;border-top:1px solid var(--up-line);box-shadow:0 -8px 24px rgba(0,30,0,.08);padding:.75rem 1.25rem;display:none;align-items:center;justify-content:space-between;gap:1rem}
+.dock.show{display:flex;animation:up-fade .2s ease}
+.toast-container{z-index:2000}
+.toast{border-radius:12px}
+
+/* Responsive */
+@media (max-width:991.98px){.rail{position:static}.topbar-inner{gap:1rem}}
+@media (max-width:767.98px){
+  .topbar-inner{flex-wrap:wrap;min-height:0;padding:.65rem 1rem 0;gap:.5rem 1rem}
+  .main-nav{order:3;width:100%;height:46px;overflow-x:auto}.main-nav a{padding:0 .85rem}
+  .topbar-right{gap:.6rem}
+  .page{padding:1.25rem 1rem 6rem}
+  .page-head h1{font-size:1.75rem}.page-head p{font-size:1rem}
+  .head-actions{width:100%}.head-actions .btn{flex:1 1 100%}
+  .jline{display:none}.stepper{gap:.6rem 1.25rem}
+  .card{--bs-card-spacer-x:1.1rem;--bs-card-spacer-y:1.1rem;--bs-card-cap-padding-x:1.1rem;--bs-card-cap-padding-y:1rem}
+  .tour-start span{display:none}
+}
+@media (max-width:575.98px){.batch-controls{grid-template-columns:1fr}.avatar-me{display:none}}
+@media (min-width:992px){.dock{display:none!important}}
+@media (max-width:991.98px){.toast-container{bottom:76px!important}}
+
+/* Guided tour */
+.driver-popover{border-radius:16px;font-family:var(--bs-body-font-family);padding:1.25rem;max-width:340px;box-shadow:0 12px 40px rgba(0,30,0,.2)}
+.driver-popover-title{font-weight:500;font-size:1.125rem;color:var(--up-ink)}
+.driver-popover-description{font-size:.9375rem;line-height:1.5;color:var(--up-muted)}
+.driver-popover .driver-popover-next-btn{background:var(--up-green);color:#fff;text-shadow:none;border:1px solid var(--up-green);border-radius:999px;padding:.4rem 1.1rem;font-size:.9375rem;font-weight:500}
+.driver-popover .driver-popover-next-btn:hover{background:var(--up-green-dark)}
+.driver-popover .driver-popover-prev-btn{border-radius:999px;text-shadow:none;padding:.4rem 1.1rem;font-size:.9375rem;font-weight:500}
+.driver-popover .driver-popover-footer .driver-popover-skip-btn{position:static;width:auto;height:auto;margin-right:auto;padding:.4rem .6rem;font-size:.9375rem;font-weight:500;border:1px solid transparent;background:transparent;color:var(--up-muted)}
+.driver-popover-progress-text{color:var(--up-muted);font-size:.875rem}
+
+/* One type scale: every piece of text is the same size; hierarchy comes from weight and color. */
+:root{--mm-text:.9375rem}
+body,.btn,.btn-sm,.form-control,.form-select,.form-label,.form-check-label,.badge,.table,.table thead th,.alert,.accordion-button,.nav-tabs .nav-link,.main-nav a,.card-sub,.card-footer,.hint,.stat-row .label,.stat-note,.lead-row small,.lead-row strong,.message-body,.chip,.toast,.modal-body,.driver-popover-description,.driver-popover-progress-text,.driver-popover .driver-popover-next-btn,.driver-popover .driver-popover-prev-btn,.driver-popover .driver-popover-footer .driver-popover-skip-btn,.dock,.text-muted-up,small,.small,footer.foot,.empty,.avatar,.avatar-me,.jitem,.jnum,.search-pill .form-control{font-size:var(--mm-text)}
+.btn,.btn-sm{--bs-btn-font-size:var(--mm-text)}
+h1,.page-head h1{font-size:2rem;font-weight:600}
+.card-title-up,.driver-popover-title,.modal-title{font-size:1.25rem;font-weight:600}
+.stat-value{font-size:1.75rem;font-weight:600}
+.form-label,.btn,.badge,.main-nav a,.nav-tabs .nav-link,.accordion-button,.lead-row strong,.table thead th,.jitem,.chip{font-weight:500}
+.card-sub,.hint,.stat-row .label,.stat-note,.lead-row small,.card-footer,.text-muted-up,footer.foot,.empty{font-weight:400;color:var(--up-muted)}
+.avatar,.avatar-me,.jnum{font-weight:600}
+.table thead th{text-transform:none;letter-spacing:0}
+/* Header badge and avatar share one height so they line up. */
+.topbar-right .badge,.avatar-me{height:36px;display:inline-flex;align-items:center;justify-content:center}
+.topbar-right .badge{padding:0 1rem}
+.avatar-me{width:36px;padding:0}
+/* Long messages never grow the layout; the full text is in the tooltip. */
+#status{display:inline-block;max-width:min(100%,460px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}
+#error{overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="#workspace" aria-label="Momentum Follow-ups home">
+      <svg class="brand-symbol" viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="13" fill="#14a800"/><path d="M11 32V17l13 10 13-10v15" fill="none" stroke="#fff" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/><path d="m26 14 11-3-3 10" fill="none" stroke="#d6f5d1" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Momentum
+    </a>
+    <nav aria-label="Main navigation"><ul class="nav main-nav">
+      <li><a class="active" href="#workspace" aria-current="page"><i class="bi bi-envelope-paper" aria-hidden="true"></i>Campaigns</a></li>
+      <li><a href="#activity"><i class="bi bi-clock-history" aria-hidden="true"></i>Activity</a></li>
+    </ul></nav>
+    <div class="topbar-right">
+      <button type="button" id="start-guide" class="btn btn-link btn-sm tour-start"><i class="bi bi-lightbulb" aria-hidden="true"></i><span>Start guide</span></button>
+      <span id="mode" class="badge badge-soft mode-label" role="status">Connecting</span>
+      <span class="avatar-me" title="Local workspace" aria-label="Local workspace">MW</span>
+    </div>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page-head">
+    <div><h1>Follow-up campaigns</h1><p>Select contacts, review personalized emails, and manage CRM follow-ups.</p></div>
+    <div class="head-actions">
+      <button id="login" type="button" class="btn btn-outline-secondary" title="Open the CRM sign-in page in a new tab"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>Sign in to CRM</button>
+      <button id="connect" type="button" class="btn btn-outline-secondary" title="Open the automation browser, sign in once, then save the session"><i class="bi bi-plug" aria-hidden="true"></i>Connect automation browser</button>
+      <button id="load" type="button" class="btn btn-primary"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>Sync report</button>
+    </div>
+  </div>
+
+  <div id="bridge-bar" class="alert alert-light border d-flex flex-wrap align-items-center gap-2 py-2" hidden>
+    <i id="bridge-icon" class="bi bi-plug" aria-hidden="true"></i><span id="bridge-text" role="status">Not connected.</span>
+    <button type="button" class="btn btn-link btn-sm ms-auto p-0" data-bs-toggle="modal" data-bs-target="#bridge-modal">How to set up the bridge</button>
+  </div>
+  <div id="file-notice" class="alert alert-warning" hidden><strong>Interactive design preview · No live emails.</strong> You are viewing locally generated sample leads and template previews. To use the real CRM, run <code>bash start-macos.command</code> with the supplied backend on your Mac, then open <a href="http://127.0.0.1:8765">your local workspace</a>.</div>
+  <div id="error" class="alert alert-danger" role="alert"></div>
+  <div id="login-help" class="alert alert-success" hidden>
+    <strong>Complete sign-in in your CRM browser</strong>
+    <p class="mb-2 mt-1">Enter credentials and finish verification in the CRM's own browser window. Then save your browser session here. Saving a session alone does not enable live sending.</p>
+    <div class="d-flex flex-wrap gap-2"><button id="finish-login" type="button" class="btn btn-primary btn-sm">Save browser session</button><button id="cancel-login" type="button" class="btn btn-outline-secondary btn-sm">Cancel sign-in</button></div>
+  </div>
+
+  <div class="stepper" aria-label="Campaign workflow progress">
+    <div class="jitem current" data-stage="1"><span class="jnum">1</span>Choose leads</div><span class="jline" aria-hidden="true"></span>
+    <div class="jitem" data-stage="2"><span class="jnum">2</span>Personalize</div><span class="jline" aria-hidden="true"></span>
+    <div class="jitem" data-stage="3"><span class="jnum">3</span>Review &amp; run</div>
+  </div>
+
+  <div id="workspace" class="row g-4">
+    <div class="col-lg-8 d-flex flex-column gap-4">
+      <section class="card" aria-labelledby="leads-title">
+        <div class="card-header"><h2 id="leads-title" class="card-title-up">Select recipients</h2><p class="card-sub">Select leads from your report. Eligibility is verified at preview and send time.</p></div>
+        <div class="card-body">
+          <div class="input-group search-pill mb-3"><span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span><input id="search" type="search" class="form-control" placeholder="Search by lead name or email..." aria-label="Search leads" autocomplete="off"></div>
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2"><div class="d-flex flex-wrap align-items-center gap-3"><div class="form-check mb-0"><input class="form-check-input" type="checkbox" id="all"><label class="form-check-label" for="all">Select all loaded leads</label></div><div class="input-group input-group-sm w-auto"><select id="select-limit" class="form-select form-select-sm" aria-label="How many leads to select"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option><option value="0">All</option></select><button id="select-eligible" type="button" class="btn btn-outline-secondary btn-sm" title="Select the newest active leads that have had no contact for 72 hours or more"><i class="bi bi-clock-history" aria-hidden="true"></i>Select no contact 72 h+</button></div></div><span class="text-muted-up" id="count">0 selected / 0 loaded</span></div>
+          <div id="leads" class="lead-list"><div class="empty"><i class="bi bi-inbox" aria-hidden="true"></i><strong>No leads available</strong>Sync your CRM report to load recipients.</div></div>
+          <p id="search-empty" class="empty mb-0" hidden>No matching leads found.</p>
+        </div>
+        <div class="card-footer">Assignment, consent, and duplicate activity are rechecked before each live send.</div>
+      </section>
+
+      <section class="card" aria-labelledby="preview-title">
+        <div class="card-header"><h2 id="preview-title" class="card-title-up">Action &amp; preview</h2><p class="card-sub">Send an email or a text with a saved CRM template, or log a call, and review each one first.</p></div>
+        <div class="card-body">
+          <div class="row g-2 align-items-end">
+            <div class="col-sm-auto"><label for="channel" class="form-label">Action</label><select id="channel" class="form-select"><option value="email">Send email</option><option value="text">Send text</option><option value="call">Log call</option></select></div>
+            <div id="template-col" class="col-sm"><label id="template-label" for="template" class="form-label">Saved email template</label><select id="template" class="form-select"><option value="">Sync report first</option></select></div>
+            <div class="col-sm-auto"><button id="preview" type="button" class="btn btn-outline-primary w-100"><i class="bi bi-eye" aria-hidden="true"></i><span>Preview messages</span></button></div>
+          </div>
+          <div id="call-fields" class="row g-2 mt-1" hidden>
+            <div class="col-sm"><label for="call-type" class="form-label">Call type</label><select id="call-type" class="form-select"></select></div>
+            <div class="col-sm"><label for="call-result" class="form-label">Call result</label><select id="call-result" class="form-select"></select></div>
+            <div class="col-12"><label for="call-note" class="form-label">Call notes</label><textarea id="call-note" class="form-control" rows="2" maxlength="2000" placeholder="Optional, saved with each call log"></textarea></div>
+          </div>
+          <p id="preview-hint" class="hint"></p>
+          <div id="messages" class="messages accordion mt-2"><div class="empty"><i class="bi bi-envelope-open" aria-hidden="true"></i><strong>No preview generated</strong>Select leads and a template to generate the email preview.</div></div>
+          <p id="expiry" class="hint"></p>
+        </div>
+      </section>
+    </div>
+
+    <aside class="col-lg-4">
+      <div class="rail d-flex flex-column gap-4">
+        <section class="card" aria-label="Batch overview">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between gap-2 mb-2"><span class="chip"><i class="bi bi-file-earmark-bar-graph" aria-hidden="true"></i>FR - No Contact &gt; 72 Hours</span></div>
+            <p class="text-muted-up mb-2"><i class="bi bi-shield-check text-success me-1" aria-hidden="true"></i>Eligibility checks active</p>
+            <div class="stat-row"><span class="label">Leads loaded</span><span class="stat-value" id="metric-loaded">0</span></div>
+            <div class="stat-row"><span class="label">Selected leads</span><span class="stat-value" id="metric-selected">0</span></div>
+            <div class="stat-row"><span class="label">Ready after review</span><span class="stat-value" id="metric-ready">—</span></div>
+            <div class="stat-row"><span class="label">Emails sent</span><span><span class="stat-value" id="metric-sent">0</span><span class="stat-note" id="metric-outcome">No batch selected yet</span></span></div>
+            <div class="stat-row"><span class="label">CRM count today<button id="crm-refresh" type="button" class="btn btn-link btn-sm p-0 ms-2" title="Read today's Outbound Emails / SMS from the CRM dashboard"><i class="bi bi-arrow-repeat" aria-hidden="true"></i><span class="visually-hidden">Refresh</span></button></span><span><span class="stat-value" id="crm-count">—</span><span class="stat-note" id="crm-count-note">Outbound emails and texts</span></span></div>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="run-title">
+          <div class="card-header"><h2 id="run-title" class="card-title-up">Review &amp; execute</h2><p id="quota" class="card-sub">Sending allowances will load with your workspace.</p></div>
+          <div class="card-body">
+            <div class="option-box form-check form-switch"><input class="form-check-input" role="switch" id="dry" type="checkbox" checked><label class="form-check-label" for="dry"><strong class="fw-medium">Dry run (recommended)</strong><span class="d-block text-muted-up small">Recheck and log outcomes without sending any message.</span></label></div>
+            <div class="option-box form-check form-switch"><input class="form-check-input" role="switch" id="test" type="checkbox"><label class="form-check-label" for="test"><strong class="fw-medium">Single authorized live test</strong><span class="d-block text-muted-up small">One lead only. Needed once for each action (email, text, call log) before a batch.</span></label></div>
+            <div id="approval-area" class="mb-3" hidden><label for="approval" class="form-label">To authorize a live operation, type <strong>SEND APPROVED EMAILS</strong> exactly as shown.</label><input type="text" id="approval" class="form-control" aria-label="Live-send approval" placeholder="SEND APPROVED EMAILS" autocomplete="off"></div>
+            <button id="run" type="button" class="btn btn-primary w-100" disabled><i class="bi bi-play-circle" aria-hidden="true"></i><span>Run approved preview</span></button>
+            <p id="run-hint" class="hint mb-3"></p>
+            <div class="batch-controls mb-3" role="group" aria-label="Batch controls">
+              <button id="pause" type="button" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pause-circle" aria-hidden="true"></i><span>Pause batch</span></button>
+              <button id="resume" type="button" class="btn btn-outline-secondary btn-sm"><i class="bi bi-play-circle" aria-hidden="true"></i><span>Resume batch</span></button>
+              <button id="stop" type="button" class="btn btn-outline-danger btn-sm"><i class="bi bi-stop-circle" aria-hidden="true"></i><span>Stop batch</span></button>
+            </div>
+            <p class="hint mb-0">Pause or stop between operations. An email already submitted cannot be undone. The tool has no caps of its own; Momentum’s own limits still apply.</p>
+          </div>
+        </section>
+      </div>
+    </aside>
+  </div>
+
+  <section id="activity" class="card mt-4" aria-labelledby="activity-title">
+    <div class="card-header d-flex flex-wrap align-items-start justify-content-between gap-2"><div><h2 id="activity-title" class="card-title-up">Activity log</h2><p class="card-sub">Review message outcomes, export results, and reconcile uncertain sends.</p></div><span id="status" role="status" class="badge badge-soft text-wrap">Ready</span></div>
+    <div class="card-body">
+      <ul class="nav nav-tabs mb-3" id="activity-tabs" role="tablist">
+        <li class="nav-item" role="presentation"><button class="nav-link active" id="tab-results" data-bs-toggle="tab" data-bs-target="#pane-results" type="button" role="tab" aria-controls="pane-results" aria-selected="true">Results</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" id="tab-history" data-bs-toggle="tab" data-bs-target="#pane-history" type="button" role="tab" aria-controls="pane-history" aria-selected="false">Persistent send history</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" id="tab-uncertain" data-bs-toggle="tab" data-bs-target="#pane-uncertain" type="button" role="tab" aria-controls="pane-uncertain" aria-selected="false">Resolve an uncertain send</button></li>
+      </ul>
+      <div class="tab-content">
+        <div class="tab-pane fade show active" id="pane-results" role="tabpanel" aria-labelledby="tab-results" tabindex="0">
+          <div class="row g-2 align-items-end mb-3">
+            <div class="col-md"><label for="batch" class="form-label">Review a batch</label><select id="batch" class="form-select"><option value="">No batches yet</option></select></div>
+            <div class="col-6 col-md-auto"><a id="export" class="btn btn-outline-secondary w-100" href="#" download="momentum-results.csv"><i class="bi bi-download" aria-hidden="true"></i><span>Export CSV</span></a></div>
+            <div class="col-6 col-md-auto"><button id="recover" type="button" class="btn btn-outline-secondary w-100" title="Select unfinished leads for a fresh preview"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span>Prepare retry</span></button></div>
+          </div>
+          <div id="results" class="table-responsive"><div class="empty"><i class="bi bi-clock-history" aria-hidden="true"></i><strong>No batch runs yet</strong>Run a dry test or a verified batch to view its results.</div></div>
+        </div>
+        <div class="tab-pane fade" id="pane-history" role="tabpanel" aria-labelledby="tab-history" tabindex="0"><div id="ledger" class="table-responsive"></div></div>
+        <div class="tab-pane fade" id="pane-uncertain" role="tabpanel" aria-labelledby="tab-uncertain" tabindex="0">
+          <p class="text-muted-up">Verify the CRM Contact History first. Marking a send “not sent” permits a fresh preview and requires evidence to prevent duplicate outreach.</p>
+          <div class="row g-3 mb-3">
+            <div class="col-md-6"><label for="uncertain" class="form-label">Uncertain attempt</label><select id="uncertain" class="form-select"><option value="">No uncertain sends</option></select></div>
+            <div class="col-md-6"><label for="resolution" class="form-label">Resolution</label><select id="resolution" class="form-select"><option value="sent">Confirmed sent</option><option value="not-sent">Confirmed not sent</option></select></div>
+          </div>
+          <textarea id="evidence" class="form-control mb-3" rows="3" aria-label="CRM evidence" placeholder="Record CRM Contact History evidence and verification time…"></textarea>
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2"><div class="form-check mb-0"><input type="checkbox" class="form-check-input" id="checked"><label class="form-check-label" for="checked">I verified CRM Contact History</label></div><button id="reconcile" type="button" class="btn btn-primary">Save reconciliation</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot"><span>Momentum Follow-ups · Local campaign workspace</span><span>Recipient safety · Explicit approval · Audit-ready records</span></footer>
+</main>
+
+<div class="modal fade" id="bridge-modal" tabindex="-1" aria-labelledby="bridge-title" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content" style="border-radius:16px">
+    <div class="modal-header border-0 pb-0"><h2 class="modal-title card-title-up" id="bridge-title">Connect through your own browser</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+    <div class="modal-body">
+      <p class="text-muted-up">Use the browser where you are already signed in to Momentum. No second login or two-step code is needed.</p>
+      <ol class="ps-3 mb-3">
+        <li class="mb-2">Open <code>chrome://extensions</code> in that browser and turn on <strong>Developer mode</strong>.</li>
+        <li class="mb-2">Click <strong>Load unpacked</strong> and choose this folder:<div class="mt-1"><code id="ext-path" class="d-block p-2 bg-light rounded text-break"></code></div></li>
+        <li>Come back here and click <strong>Sign in to CRM</strong>. Momentum opens and the status turns green.</li>
+      </ol>
+      <p class="hint mb-0">The extension only talks to this computer and to Momentum. Sending still requires the dry run, the single approved test and your approval.</p>
+    </div>
+    <div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-primary" data-bs-dismiss="modal">Got it</button></div>
+  </div></div>
+</div>
+<div id="mobile-dock" class="dock" aria-live="polite">
+  <div><span class="text-muted-up d-block small">Current audience</span><strong><span id="mobile-count">0</span> selected</strong></div>
+  <button id="mobile-preview" type="button" class="btn btn-primary">Preview emails</button>
+</div>
+<div class="toast-container position-fixed bottom-0 end-0 p-3" id="toasts" aria-live="polite" aria-atomic="true"></div>
+
+<script src="assets/bootstrap.bundle.min.js"></script>
+<script src="assets/driver.js.iife.js"></script>
+<script>
+const $=id=>document.getElementById(id), tab=crypto.randomUUID(), offline=['file:','about:'].includes(location.protocol)||new URLSearchParams(location.search).has('demo');
+let preview=null,localBusy=false,remoteBusy=false,leadRows=[],shownBatch='',batchRows=[],paused=false;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const renderedTables=new Map();
+function renderTable(id,rows){const signature=JSON.stringify(rows);if(renderedTables.get(id)!==signature){$(id).innerHTML=table(rows);renderedTables.set(id,signature)}}
+const empty=(title,body,icon='envelope-open')=>`<div class="empty fade-in"><i class="bi bi-${icon}" aria-hidden="true"></i><strong>${esc(title)}</strong>${esc(body)}</div>`;
+const skeleton=(n=5)=>'<div class="placeholder-glow">'+Array.from({length:n},()=>'<div class="lead-row"><span class="avatar placeholder"></span><span class="flex-grow-1"><span class="placeholder col-5 d-block mb-1"></span><span class="placeholder col-8 d-block" style="height:.6rem"></span></span></div>').join('')+'</div>';
+function toast(message,kind='success'){if(typeof bootstrap==='undefined')return;const el=document.createElement('div');el.className=`toast align-items-center text-bg-${kind} border-0`;el.setAttribute('role','status');el.innerHTML=`<div class="d-flex"><div class="toast-body">${esc(message)}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div>`;$('toasts').append(el);const t=new bootstrap.Toast(el,{delay:3500});el.addEventListener('hidden.bs.toast',()=>el.remove());t.show()}
+// Local file preview is intentionally isolated from CRM APIs. All sample records
+// use example.com addresses. A live send is impossible in this code path.
+const demoStore={
+  leads:[
+    ['Avery Johnson','avery.johnson@example.com'],['Jordan Mitchell','jordan.mitchell@example.com'],
+    ['Taylor Morgan','taylor.morgan@example.com'],['Casey Thompson','casey.thompson@example.com'],
+    ['Riley Bennett','riley.bennett@example.com'],['Parker Collins','parker.collins@example.com'],
+    ['Morgan Lee','morgan.lee@example.com'],['Cameron Davis','cameron.davis@example.com'],
+    ['Alex Rivera','alex.rivera@example.com'],['Sydney Turner','sydney.turner@example.com'],
+    ['Logan Wright','logan.wright@example.com'],['Jamie Walker','jamie.walker@example.com'],
+    ['Quinn Brooks','quinn.brooks@example.com'],['Reese Martin','reese.martin@example.com']
+  ].map(([name,email],i)=>({id:'sample-'+(i+1),name,email,age_hours:[20,48,75,96,130,170,26,52,90,110,200,36,81,150][i%14],action:['Text Message (SMS)','Email','Script'][i%3]})),
+  templates:[{id:'checkin',name:'72-hour friendly follow-up',subject:'Quick check-in, {{first}}',body:'Hi {{first}},\n\nJust following up on your recent interest. I would be glad to help if you have questions or would like to discuss your next steps.\n\nBest,\nYour Sales Team'},{id:'invite',name:'Appointment invitation',subject:'A quick note for {{first}}',body:'Hi {{first}},\n\nIf you are still considering your options, I would be happy to help arrange a convenient appointment. Let me know what works for you.\n\nBest,\nYour Sales Team'},{id:'question',name:'Quick question',subject:'Still interested, {{first}}?',body:'Hi {{first}},\n\nJust checking whether you would like any more details. There is no pressure — happy to answer questions whenever you are ready.\n\nThanks,\nYour Sales Team'}],
+  preview:null,batches:[],resultsByBatch:{},active:''
+};
+function demoApi(path,data){
+  if(path==='leads')return Promise.resolve({leads:demoStore.leads,templates:demoStore.templates});
+  if(path==='state')return Promise.resolve({mode:'demo',busy:false,paused:false,error:'',job:'Ready · sample data',quota:{hour_remaining:30,day_remaining:90},batch:demoStore.active,results:demoStore.resultsByBatch[demoStore.active]||[],batches:demoStore.batches,ledger:[],login_pending:false});
+  if(path==='preview'){
+    const tpl=demoStore.templates.find(t=>t.id===data.template)||demoStore.templates[0];
+    const messages=data.ids.map(id=>{const l=demoStore.leads.find(l=>l.id===id);if(!l)return null;const first=l.name.split(' ')[0];const exclusion=l.id==='sample-6'?'Email opt-out':l.id==='sample-12'?'Assigned to another user':l.id==='sample-14'?'Duplicate follow-up found':'';return {id:l.id,name:l.name,email:l.email,exclusion,subject:tpl.subject.replaceAll('{{first}}',first),body:tpl.body.replaceAll('{{first}}',first).replaceAll('\\n','\n')}}).filter(Boolean);
+    const p={id:'sample-preview-'+Date.now(),expires:Math.floor(Date.now()/1000)+600,messages};demoStore.preview=p;return Promise.resolve(p);
+  }
+  if(path==='run'){
+    if(!data?.dry_run)return Promise.reject(Error('Live sending is disabled in the standalone sample preview. Start the authorized macOS CRM backend to use live sending.'));
+    if(data.preview_id!==demoStore.preview?.id)return Promise.reject(Error('Please preview the selected batch again.'));
+    const id='sample-batch-'+Date.now();const results=demoStore.preview.messages.map(m=>({id:m.id,name:m.name,email:m.email,status:m.exclusion?'skipped':'dry-run',detail:m.exclusion?'Excluded: '+m.exclusion:'Simulated eligibility check passed. No email sent.'}));
+    demoStore.resultsByBatch[id]=results;demoStore.active=id;demoStore.batches.unshift({id,created:Date.now()/1000,dry:true,status:'completed'});return Promise.resolve({batch:id});
+  }
+  if(path.startsWith('results?'))return Promise.resolve(demoStore.resultsByBatch[new URLSearchParams(path.split('?')[1]).get('batch')]||[]);
+  if(path==='login')return Promise.reject(Error('CRM sign-in is unavailable in the standalone HTML preview.'));
+  return Promise.reject(Error('This action requires the authorized local CRM server.'));
+}
+
+const emptyIconMap={'✉':'envelope-open','✓':'check-circle','◷':'clock-history','▥':'inbox'};
+function oneLine(t,n){t=String(t||'').split('Browser logs:')[0].trim().split(String.fromCharCode(10))[0];return t.length>n?t.slice(0,n-1)+'…':t}
+async function api(path,data){if(offline)return demoApi(path,data);const r=await fetch('/api/'+path,data===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json','X-Session-Token':'__TOKEN__','X-Tab-Id':tab},body:JSON.stringify(data)});const v=await r.json();if(!r.ok)throw Error(v.error);return v}
+
+function ago(h){const d=Math.floor(h/24);return h<1?'under an hour ago':h<24?Math.round(h)+' h ago':d<60?d+(d===1?' day':' days')+' ago':Math.round(d/30.4)+' months ago'}
+function contactText(l){const created=l.created_hours!=null?'Created '+ago(l.created_hours)+' · ':'';if(l.age_hours==null)return (l.email?l.email+' · ':'')+created+'No contact date in the report';return (l.email?l.email+' · ':'')+created+'Last contact '+ago(l.age_hours)+(l.action?' · '+l.action:'')}
+function eligibleByReport(){return [...document.querySelectorAll('.lead')].filter(x=>x.dataset.age!==''&&Number(x.dataset.age)>=72&&(x.dataset.status===''||x.dataset.status==='Active'))}
+function paceText(n,p){if(!p||!n)return '';if(!p.hourly_limit){const m=Math.round(n*(p.delay_seconds+10)/60);return m<2?'':'The whole selection is queued: '+n+' actions take about '+(m>=120?Math.round(m/60)+' hours':m+' minutes')+', one at a time.'}const hours=Math.max(0,Math.ceil(n/p.hourly_limit)-1);const minutes=Math.round(Math.max(n*p.delay_seconds/60,hours*60));return minutes<2?'':'At the configured pace, '+n+' emails take about '+(minutes>=120?Math.round(minutes/60)+' hours':minutes+' minutes')+' (limit '+p.hourly_limit+' per hour, '+p.daily_limit+' per day).'}
+let lastState=null;
+async function refreshCrmCount(){try{const r=await api('crm-stats',{});const c=r.counts||{};const n=c['Outbound Emails / SMS'];$('crm-count').textContent=n==null?'—':String(n);$('crm-count-note').textContent='Outbound emails and texts the CRM counts today'}catch(e){$('crm-count-note').textContent=oneLine(e.message,90)}}
+function controls(){
+  const busy=localBusy||remoteBusy;
+  ['load','login','connect','preview','template','all','recover','reconcile'].forEach(id=>$(id).disabled=busy);
+  document.querySelectorAll('.lead').forEach(x=>x.disabled=busy);
+  $('login').disabled=busy||offline;$('connect').disabled=busy||offline;$('run').disabled=busy||!preview||preview.expires*1000<Date.now()||(offline&&!$('dry').checked);
+  $('pause').disabled=offline||!remoteBusy||paused;$('resume').disabled=offline||!remoteBusy||!paused;$('stop').disabled=offline||!remoteBusy;
+  $('recover').disabled=busy||!shownBatch;$('reconcile').disabled=busy||!$('uncertain').value;
+  $('preview').disabled=busy||selected().length===0||!actionReady();$('template').disabled=busy||!$('template').value;$('channel').disabled=busy;
+  $('batch').disabled=busy||!shownBatch;$('uncertain').disabled=busy||!$('uncertain').value;$('resolution').disabled=busy||!$('uncertain').value;
+  ['evidence','checked'].forEach(id=>$(id).disabled=busy||!$('uncertain').value);
+  $('export').classList.toggle('disabled',!shownBatch||offline);$('select-eligible').disabled=busy||!leadRows.length;$('select-limit').disabled=busy||!leadRows.length;$('crm-refresh').disabled=busy||offline||!(lastState&&lastState.connection!=='playwright'&&lastState.bridge&&lastState.bridge.connected);
+  // Say why a button is unavailable instead of leaving it greyed out.
+  $('preview-hint').textContent=busy?'':!leadRows.length?'Sync the report to load your leads.':selected().length===0?'Select at least one lead to preview.':!actionReady()?($('channel').value==='call'?'Choose the call type and result.':'Choose a saved template.'):selected().length>10?'Checking each lead takes about 10 seconds, so '+selected().length+' leads take about '+Math.ceil(selected().length*10/60)+' minutes.':'';
+  $('run-hint').textContent=busy&&!offline?'A CRM operation is running…':!preview?'Preview messages first. Approval then unlocks this button.':preview.expires*1000<Date.now()?'The preview expired. Preview again to approve.':paceText(preview.messages.filter(m=>!m.exclusion).length,lastState&&lastState.pacing);
+}
+async function action(fn,btn){if(localBusy)return;localBusy=true;btn&&btn.classList.add('is-loading');controls();$('error').textContent='';try{await fn()}catch(e){const m=oneLine(e.message,220);$('error').textContent=m;toast(m,'danger')}finally{localBusy=false;btn&&btn.classList.remove('is-loading');controls()}}
+function invalidate(){preview=null;$('approval').value='';$('expiry').textContent='';$('metric-ready').textContent='—';$('messages').innerHTML=empty('Ready for a fresh look?','Preview your current selection to review the emails.');controls();stage()}
+function selected(){return [...document.querySelectorAll('.lead:checked')].map(x=>x.value)}
+function count(){const n=selected().length;$('count').textContent=`${n} selected / ${leadRows.length} loaded`;$('metric-loaded').textContent=leadRows.length;$('metric-selected').textContent=n;$('all').checked=n>0&&n===leadRows.length;$('all').indeterminate=n>0&&n<leadRows.length;stage()}
+function filter(){const query=$('search').value.toLowerCase().trim();let visible=0;document.querySelectorAll('.lead-row').forEach(row=>{row.classList.toggle('d-none',!row.textContent.toLowerCase().includes(query));if(!row.classList.contains('d-none'))visible++});$('search-empty').hidden=!leadRows.length||visible>0;}
+async function load(){invalidate();$('leads').innerHTML=skeleton();let report;try{report=await api('leads',{})}catch(e){$('leads').innerHTML=empty('Could not load the report',e.message,'exclamation-triangle');throw e}
+  leadRows=report.leads;
+  $('leads').innerHTML=leadRows.length?leadRows.map(l=>`<label class="lead-row fade-in"><input class="lead form-check-input mt-0" type="checkbox" value="${esc(l.id)}" data-age="${l.age_hours??""}" data-status="${esc(l.status||"")}"><span class="avatar" aria-hidden="true">${esc(l.name.split(/\s+/).map(w=>w[0]).slice(0,2).join(''))}</span><span class="flex-grow-1 text-truncate"><strong class="text-truncate">${esc(l.name)}</strong><small>${esc(contactText(l))}</small></span></label>`).join(''):empty('All caught up','No leads were returned by this report.','check-circle');
+  lastReport=report;fillChannel();
+  document.querySelectorAll('.lead').forEach(x=>x.onchange=()=>{invalidate();count();controls()});$('search').value='';filter();count();controls();
+  const c=report.counts;toast(c&&c.account_rows!=null?`${c.leads} leads loaded: all ${c.account_rows} report rows for you`+(c.account_rows!==c.leads?` (${c.account_rows-c.leads} repeat a lead)`:'')+(c.report_total!=null?`, of ${c.report_total} rows in the whole report`:''):`${leadRows.length} leads loaded from the report`)}
+let lastReport=null;
+function opts(list,none){return list&&list.length?list.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join(''):`<option value="">${none}</option>`}
+function fillChannel(){const ch=$('channel').value,r=lastReport;$('call-fields').hidden=ch!=='call';$('template-col').hidden=ch==='call';$('template-label').textContent=ch==='text'?'Saved text template':'Saved email template';if(!r)return;
+  $('template').innerHTML=ch==='text'?opts(r.sms_templates,'No saved text templates found'):opts(r.templates,'No eligible saved templates');
+  const co=r.call_options||{};$('call-type').innerHTML=opts(co.types,'No call types found');$('call-result').innerHTML='<option value="">Choose the call result</option>'+opts(co.results,'')}
+function actionReady(){return $('channel').value==='call'?!!($('call-type').value&&$('call-result').value):!!$('template').value}
+$('load').onclick=e=>action(load,e.currentTarget);$('connect').onclick=e=>action(()=>api('login',{}),e.currentTarget);$('login').onclick=e=>action(async()=>{const w=window.open('about:blank','_blank');try{const entry=await api('crm-entry',{});if(w){w.opener=null;w.location.href=entry.url}else window.location.assign(entry.url);if(entry.bridge)toast('Momentum opened. Connecting this tool to your browser…','info')}catch(err){if(w)w.close();throw err}},e.currentTarget);$('search').oninput=filter;
+$('select-eligible').onclick=()=>{const limit=Number($('select-limit').value),all=eligibleByReport(),picks=limit?all.slice(0,limit):all;document.querySelectorAll('.lead').forEach(x=>x.checked=false);picks.forEach(x=>x.checked=true);invalidate();count();controls();toast(picks.length?picks.length+' newest active leads selected, of '+all.length+' with no contact for 72 hours or more':'No lead has gone 72 hours without contact',picks.length?'success':'warning')};$('crm-refresh').onclick=e=>action(refreshCrmCount,e.currentTarget);
+$('all').onchange=()=>{document.querySelectorAll('.lead').forEach(x=>x.checked=$('all').checked);invalidate();count();controls()};$('template').onchange=invalidate;$('channel').onchange=()=>{fillChannel();invalidate();controls()};['call-type','call-result','call-note'].forEach(id=>$(id).addEventListener('input',()=>{invalidate();controls()}));
+$('dry').onchange=()=>{$('approval-area').hidden=$('dry').checked;$('approval').value=''};
+$('preview').onclick=e=>action(async()=>{invalidate();$('messages').innerHTML='<div class="placeholder-glow p-2"><span class="placeholder col-12 mb-2" style="height:2.4rem"></span><span class="placeholder col-12" style="height:2.4rem"></span></div>';const ch=$('channel').value;const p=await api('preview',{ids:selected(),template:ch==='call'?null:$('template').value,channel:ch,call:ch==='call'?{type:$('call-type').value,result:$('call-result').value,note:$('call-note').value}:null});$('messages').innerHTML=p.messages.map((m,i)=>`<article class="accordion-item fade-in"><h3 class="accordion-header"><button class="accordion-button ${i===0?'':'collapsed'}" type="button" data-bs-toggle="collapse" data-bs-target="#msg-${i}" aria-expanded="${i===0}"><strong>${esc(m.name)}</strong><span class="text-body-secondary small">${esc(m.channel&&m.channel!=='email'?(m.to||'No phone'):m.email)}</span>${m.exclusion?'<span class="badge text-bg-warning">Skipped</span>':''}</button></h3><div id="msg-${i}" class="accordion-collapse collapse ${i===0?'show':''}"><div class="accordion-body">${m.exclusion?`<p class="text-warning-emphasis mb-0">Skipped: ${esc(m.exclusion)}</p>`:`<p class="fw-semibold mb-2">${esc(m.subject)}</p><pre class="message-body">${esc(m.body)}</pre>`}</div></div></article>`).join('');const ready=p.messages.filter(m=>!m.exclusion).length;preview=ready?p:null;$('metric-ready').textContent=ready;$('expiry').textContent=`${ready} ready · ${p.messages.length-ready} excluded · Approval expires at ${new Date(p.expires*1000).toLocaleTimeString()}`;stage();toast(ready?`${ready} message${ready===1?'':'s'} ready to review`:'No message is ready to send',ready?'success':'warning')},e.currentTarget);
+$('run').onclick=e=>action(async()=>{const dry=$('dry').checked;const r=await api('run',{preview_id:preview?.id,dry_run:dry,test:$('test').checked,authorization:$('approval').value});shownBatch=r.batch;invalidate();toast(dry?'Dry run started — nothing is sent':'Batch started','info');$('activity').scrollIntoView({behavior:'smooth'})},e.currentTarget);
+['stop','pause','resume'].forEach(id=>$(id).onclick=()=>action(()=>api(id,{})));
+const STATUS={sent:'success','dry-run':'info',skipped:'secondary',failed:'danger',uncertain:'warning',interrupted:'warning','not-sent':'secondary',pending:'light',sending:'primary'};
+function table(rows){if(!rows.length)return empty('A clear record, from start to finish','Run a previewed batch to see its results here.','clock-history');return '<table class="table table-hover align-middle mb-0"><thead><tr><th scope="col">Lead</th><th scope="col">Status</th><th scope="col">Details</th></tr></thead><tbody>'+rows.map(r=>`<tr><td>${esc(r.name||r.email)}</td><td><span class="badge text-bg-${STATUS[r.status]||'secondary'} status-${esc(r.status)}">${esc(r.status)}</span></td><td class="small">${esc(r.detail)}</td></tr>`).join('')+'</tbody></table>'}
+$('batch').onchange=()=>{shownBatch=$('batch').value};
+$('recover').onclick=e=>action(async()=>{const rows=await api('results?batch='+encodeURIComponent(shownBatch));const ids=new Set(rows.filter(r=>['interrupted','skipped','failed','not-sent'].includes(r.status)).map(r=>r.id));await load();document.querySelectorAll('.lead').forEach(x=>x.checked=ids.has(x.value));count();$('messages').innerHTML=empty('Unfinished leads selected','Choose a template and preview again. Eligibility and duplicate checks still apply.');$('workspace').scrollIntoView({behavior:'smooth'})},e.currentTarget);
+$('reconcile').onclick=e=>action(async()=>{await api('reconcile',{lead_id:$('uncertain').value,resolution:$('resolution').value,evidence:$('evidence').value,confirmation:$('checked').checked?'I CHECKED CRM HISTORY':''});invalidate();$('evidence').value='';$('checked').checked=false;toast('Reconciliation saved')},e.currentTarget);
+
+function renderBridge(s){
+  const on=s.connection==='bridge'||s.connection==='both';$('connect').hidden=s.connection==='bridge';$('bridge-bar').hidden=!on||!s.bridge;if(!on||!s.bridge)return;
+  const b=s.bridge,bar=$('bridge-bar');$('ext-path').textContent=b.extension_path||'';
+  bar.classList.toggle('alert-success',b.connected);bar.classList.toggle('alert-light',!b.connected);
+  $('bridge-icon').className='bi '+(b.connected?'bi-check-circle-fill text-success':'bi-plug');
+  $('bridge-text').innerHTML=b.connected?'<strong>Connected to Momentum</strong> in your browser'+(b.account?' as '+esc(b.account):''):s.connection==='both'?'<strong>Choose a connection.</strong> Click <em>Sign in to CRM</em> to use your own browser (after installing the bridge once), or <em>Connect automation browser</em>.':b.paired?'<strong>Waiting for your browser.</strong> Open Momentum and click <em>Sign in to CRM</em>.':'<strong>Not connected.</strong> Install the Momentum Bridge extension once, then click <em>Sign in to CRM</em>.';
+}
+async function poll(){try{const s=await api('state');remoteBusy=s.busy;paused=s.paused;lastState=s;renderBridge(s);$('mode').textContent=s.mode==='demo'?'Demo · no emails sent':'Live CRM';$('mode').className='badge mode-label '+(s.mode==='demo'?'badge-soft':'badge-green');{const t=(s.paused?'Paused · ':'')+(s.error||s.job);$('status').textContent=oneLine(t,90);$('status').title=t}$('quota').textContent=s.pacing&&!s.pacing.hourly_limit&&!s.pacing.daily_limit?'No caps of the tool’s own: the whole selection is queued and sent one at a time.':`Allowance remaining: ${s.quota.hour_remaining} this hour · ${s.quota.day_remaining} today`;
+if(!shownBatch)shownBatch=s.batch||'';
+$('login-help').hidden=!s.login_pending;
+const batchOptions=s.batches.map(b=>`<option value="${esc(b.id)}">${esc(new Date(b.created*1000).toLocaleString())} · ${b.dry?'dry run':'live'} · ${esc(b.status)} · ${esc(b.id.slice(0,8))}</option>`).join('')||'<option value="">No batches yet</option>';if($('batch').innerHTML!==batchOptions){$('batch').innerHTML=batchOptions;$('batch').value=shownBatch}
+batchRows=shownBatch===s.batch?s.results:await api('results?batch='+encodeURIComponent(shownBatch));renderTable('results',batchRows);$('export').href='/api/export?batch='+encodeURIComponent(shownBatch);$('export').setAttribute('aria-disabled',String(!shownBatch));$('metric-sent').textContent=batchRows.filter(r=>r.status==='sent').length;$('metric-outcome').textContent=batchRows.length?`${batchRows.filter(r=>r.status==='dry-run').length} dry-run · ${batchRows.filter(r=>r.status==='skipped').length} skipped`:'No batch selected yet';renderTable('ledger',s.ledger);const old=$('uncertain').value;const options=s.ledger.filter(r=>r.status==='uncertain').map(r=>`<option value="${esc(r.lead_id)}">${esc(r.email)}</option>`).join('')||'<option value="">No uncertain sends</option>';if($('uncertain').innerHTML!==options){$('uncertain').innerHTML=options;if([...$('uncertain').options].some(o=>o.value===old))$('uncertain').value=old}controls();}catch(e){$('status').textContent='Workspace unavailable';$('error').textContent='Cannot reach the local server. Keep the application running and reload this page.';remoteBusy=true;controls()}setTimeout(poll,document.hidden?10000:remoteBusy?1000:3000)}
+$('export').onclick=e=>{if(!shownBatch||offline)e.preventDefault()};
+$('finish-login').onclick=e=>action(()=>api('finish-login',{}),e.currentTarget);
+$('cancel-login').onclick=()=>action(()=>api('stop',{}));
+
+// Workflow steps and the phone action bar follow the selection and preview.
+function stage(){
+  const n=Number($('metric-selected').textContent)||0, ready=$('metric-ready').textContent.trim(), has=ready!=='—'&&ready!=='';
+  const st=has?3:n>0?2:1;
+  document.querySelectorAll('.jitem').forEach((el,i)=>{el.classList.toggle('current',i===st-1);el.classList.toggle('done',i<st-1);el.querySelector('.jnum').innerHTML=i<st-1?'<i class="bi bi-check-lg" aria-hidden="true"></i>':String(i+1)});
+  document.querySelectorAll('.jline').forEach((el,i)=>el.style.setProperty('--fill',i<st-1?1:0));
+  $('mobile-count').textContent=n.toLocaleString();$('mobile-dock').classList.toggle('show',n>0);
+  $('mobile-preview').disabled=$('preview').disabled;$('mobile-preview').textContent=has?'Refresh preview':'Preview emails';
+}
+$('mobile-preview').onclick=()=>{if(!$('preview').disabled){$('preview').click();$('preview-title').scrollIntoView({behavior:'smooth',block:'start'})}};
+new MutationObserver(stage).observe($('preview'),{attributes:true,attributeFilter:['disabled']});
+
+// Navigation highlight follows the click and the scroll position.
+const navLinks=[...document.querySelectorAll('.main-nav a')];
+function activateNav(target){navLinks.forEach(link=>{const on=link.hash===target;link.classList.toggle('active',on);if(on)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current')})}
+navLinks.forEach(link=>link.addEventListener('click',()=>activateNav(link.hash)));
+addEventListener('hashchange',()=>activateNav(location.hash==='#activity'?'#activity':'#workspace'));
+activateNav(location.hash==='#activity'?'#activity':'#workspace');
+if('IntersectionObserver' in window){new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting)activateNav('#activity')})},{rootMargin:'-45% 0px -45% 0px'}).observe($('activity'));new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting)activateNav('#workspace')})},{rootMargin:'-45% 0px -45% 0px'}).observe($('workspace'))}
+// Press "/" anywhere to jump to lead search.
+addEventListener('keydown',e=>{if(e.key==='/'&&!/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)){e.preventDefault();$('search').focus()}});
+
+// Step-by-step guide (driver.js). Starts on a first visit and from "Start guide".
+(function(){
+  const KEY='momentum-tour-done';
+  const steps=[
+    {element:'#login',popover:{side:'bottom',align:'start',title:'Sign in to CRM',description:'Opens the Momentum login in a new tab. Use it to check you can reach the CRM.'}},
+    {element:'#connect',popover:{side:'bottom',align:'start',title:'Connect automation browser',description:'Do this once. Sign in and enter your two-step code in the window that opens, then save the session.'}},
+    {element:'#load',popover:{side:'bottom',align:'start',title:'Sync report',description:'Loads your leads from the FR - No Contact > 72 Hours report and the saved email templates.'}},
+    {element:'#search',popover:{side:'bottom',align:'start',title:'Choose leads',description:'Search and tick the leads to email. Eligibility is checked again at preview and before every send.'}},
+    {element:'#template',popover:{side:'bottom',align:'start',title:'Saved template',description:'Pick one of your saved Momentum email templates.'}},
+    {element:'#preview',popover:{side:'bottom',align:'start',title:'Preview messages',description:'Shows each personalized email and any lead that will be skipped, before anything is sent.'}},
+    {element:'#dry',popover:{side:'bottom',align:'start',title:'Dry run',description:'Keep this on to rehearse. Nothing is sent. Turn it off only for the single approved test email, then batches.'}},
+    {element:'#run',popover:{side:'bottom',align:'start',title:'Run batch',description:'Starts the batch. Emails go out one at a time through the normal Momentum composer.'}},
+    {element:'#pause',popover:{side:'bottom',align:'start',title:'Pause or stop',description:'Pause, resume or stop a running batch at any time. A sent email cannot be undone.'}},
+    {element:'#export',popover:{side:'bottom',align:'start',title:'Results',description:'See sent, skipped and failed leads in the activity log and export them as CSV.'}}
+  ];
+  function remember(){try{localStorage.setItem(KEY,'1')}catch(e){}}
+  // The tooltip sits below the highlighted element; it moves above only when there is not enough room below.
+  function chooseSide(cfg){
+    const el=document.querySelector(cfg.element);if(!el)return;
+    el.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});
+    const r=el.getBoundingClientRect(),need=200,below=innerHeight-r.bottom;
+    cfg.popover.side=(below>=need||below>=r.top)?'bottom':'top';
+    cfg.popover.align='start';
+  }
+  function start(){
+    const visible=steps.filter(s=>{const e=document.querySelector(s.element);return e&&e.getClientRects().length});
+    const d=window.driver.js.driver({showProgress:true,progressText:'{{current}} / {{total}}',allowClose:true,overlayOpacity:.6,stagePadding:6,smoothScroll:false,
+      nextBtnText:'Next',prevBtnText:'Back',doneBtnText:'Finish',steps:visible,onDestroyed:remember,
+      onNextClick:()=>{const n=visible[d.getActiveIndex()+1];if(n)chooseSide(n);d.moveNext()},
+      onPrevClick:()=>{const n=visible[d.getActiveIndex()-1];if(n)chooseSide(n);d.movePrevious()},
+      onPopoverRender:(popover)=>{const skip=document.createElement('button');skip.type='button';skip.className='driver-popover-close-btn driver-popover-skip-btn';skip.textContent='Skip';skip.setAttribute('aria-label','Skip guide');popover.footerButtons.prepend(skip)}});
+    window.scrollTo({top:0,behavior:'instant'});if(visible[0])chooseSide(visible[0]);d.drive();
+  }
+  window.startGuide=start;
+  $('start-guide').onclick=start;
+  let seen=false;try{seen=localStorage.getItem(KEY)==='1'}catch(e){}
+  if(!seen&&!navigator.webdriver&&!/[?&]noguide/.test(location.search))setTimeout(start,700);
+})();
+
+if(offline){$('file-notice').hidden=false;$('mode').textContent='Demo · no emails sent';$('status').textContent='Sample data only';controls();load().then(()=>{controls();poll()}).catch(e=>{$('error').textContent=e.message})}else{controls();poll()}
+stage();
+</script>
+</body>
+</html>

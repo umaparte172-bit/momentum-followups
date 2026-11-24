@@ -1,0 +1,23 @@
+{
+  "mode": "live",
+  "verified": false,
+  "account_name": "Your Name As Momentum Shows It",
+  "max_batch": 500,
+  "delay_seconds": 30,
+  "hourly_limit": 20,
+  "daily_limit": 100,
+  "external_daily_reserve": 0,
+  "timezone": "America/Los_Angeles",
+  "preview_ttl_seconds": 900,
+  "headless": false,
+  "login_url": "https://yourstore.udccrm.com/acrm/servlet/login",
+  "dashboard_url": "",
+  "report_url": "",
+  "allowed_origin": "https://yourstore.udccrm.com",
+  "selectors": {},
+  "crm_profile": "udc",
+  "connection": "both",
+  "report_id": 1056,
+  "template_id": "",
+  "ignore_contact_methods": "remark|prospect ?status|prospect ?alert|assigned|reminder"
+}
