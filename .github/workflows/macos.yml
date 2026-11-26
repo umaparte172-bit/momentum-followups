@@ -43,7 +43,12 @@ jobs:
       - name: Install test extras
         run: .venv/bin/python -m pip install '.[test]'
       - name: Test suite
-        run: .venv/bin/python -m pytest tests -q
+        run: |
+          set -o pipefail
+          if ! .venv/bin/python -m pytest tests -q -rfE --tb=line 2>&1 | tee pytest.txt; then
+            grep -E "^(FAILED|ERROR) |^[^ ].*\.py:[0-9]+: " pytest.txt | head -40 | while IFS= read -r line; do echo "::error::$line"; done
+            exit 1
+          fi
       - name: Demo self-check (read-only)
         env:
           MOMENTUM_HOME: ${{ runner.temp }}/momentum-home
