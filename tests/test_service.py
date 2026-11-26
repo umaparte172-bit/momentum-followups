@@ -91,11 +91,11 @@ class ServiceTests(unittest.TestCase):
         self.app.config.update(mode="live", verified=True)
         self.app.factory = FakeSender
         p = self.preview()
+        # No single test is needed before a batch any more; the typed approval still is.
         with self.assertRaises(ValueError):
-            self.app.run("tab-one", {"preview_id": p["id"], "dry_run": False, "authorization": "SEND APPROVED EMAILS"})
-        rows = self.run_preview(p, dry_run=False, test=True, authorization="SEND APPROVED EMAILS")
+            self.app.run("tab-one", {"preview_id": p["id"], "dry_run": False, "authorization": ""})
+        rows = self.run_preview(p, dry_run=False, authorization="SEND APPROVED EMAILS")
         self.assertEqual(rows[0]["status"], "sent")
-        self.assertTrue(self.app.snapshot()["test_verified"])
 
     def test_uncertain_stops_batch(self):
         self.app.config.update(mode="live", verified=True)

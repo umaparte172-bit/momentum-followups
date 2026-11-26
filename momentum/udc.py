@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from .adapters import Momentum
-from .core import LeadExcluded, eligible, fingerprint
+from .core import LeadExcluded, eligible, required_owner, fingerprint
 
 EMAIL_METHOD = re.compile(r"e-?mail", re.I)
 TEXT_METHOD = re.compile(r"text message|\bsms\b", re.I)
@@ -154,6 +154,12 @@ class MomentumUDC(Momentum):
         self.account()
         grid, opener = self._results()
         try:
+            t = "const t = v => v == null ? '' : String(v);"
+            found = grid.evaluate(r"""(wanted) => { const c = new Set(); for (const r of Tabulator.findTable('.tabulator')[0].getData()) for (const k in r) c.add(k);
+                return {columns: [...c], sourceColumns: [...c].filter(k => k === wanted || /source|\bsrc\b|vendor|provider/i.test(k)).slice(0, 8)}; }""", self.config.get("source_column", ""))
+            self.full_meta = found
+            self.full_rows = grid.evaluate("(keys) => { " + t + """ return Tabulator.findTable('.tabulator')[0].getData()
+                .map(r => [t(r.personid), t(r['Customer Name']), t(r['Sales Person 1']), t(r['Last Contact Date']), t(r['Last Action']), t(r['Prospect Creation Date']), t(r['Sales Status']), keys.map(k => t(r[k]))]); }""", found["sourceColumns"])
             rows = grid.evaluate("""(account) => Tabulator.findTable('.tabulator')[0].getData()
                 .filter(r => r['Sales Person 1'] === account)
                 .map(r => ({id: String(r.personid), name: r['Customer Name'], last: r['Last Contact Date'], action: r['Last Action'], created: r['Prospect Creation Date'], status: r['Sales Status']}))""",
@@ -162,7 +168,7 @@ class MomentumUDC(Momentum):
             for page in (grid, opener):
                 if not page.is_closed():
                     page.close()
-        return self._lead_list(rows)
+        return self._lead_list(rows, len(self.full_rows))
 
     def _age(self, last):
         """Hours since the report's last contact (dealership time), or None when unknown."""
@@ -247,7 +253,8 @@ class MomentumUDC(Momentum):
         name = (row or {}).get("name") or raw.get("name", "")
         return dict(id=str(lead_id), name=name, email=email, assigned_to=assigned, opt_out=opt_out,
                     report_eligible=report_eligible, recent_email=recent_email, recent_text=recent_text, contact_note=contact_note,
-                    phones=raw.get("phones", []))
+                    phones=raw.get("phones", []), history_read=isinstance(history, list),
+                    first_name=raw.get("first_name", ""), last_name=raw.get("last_name", ""))
 
     # --- composer ---------------------------------------------------------------------------
     def _open_composer(self):
@@ -259,7 +266,7 @@ class MomentumUDC(Momentum):
     def templates(self, leads):
         for item in leads:
             lead = self._lead(item["id"])
-            if eligible(lead, self.config["account_name"]):
+            if eligible(lead, required_owner(self.config)):
                 continue
             comp = self._open_composer()
             options = comp.locator(self.s["template_select"]).locator("option").evaluate_all(
@@ -270,8 +277,10 @@ class MomentumUDC(Momentum):
 
     def inspect(self, lead_id):
         lead = self._lead(lead_id)
-        if eligible(lead, self.config["account_name"]):
+        if eligible(lead, required_owner(self.config)):
             return lead
+        if self.config.get("custom"):
+            raise ValueError("Custom messages need the Momentum Bridge connection")
         self.history_before = [h["text"] for h in self._history()]
         comp = self._open_composer()
         comp.locator(self.s["template_select"]).select_option(value=str(self.config["template_id"]))
@@ -331,8 +340,11 @@ class MomentumUDC(Momentum):
         if when is None or started is None or abs((when - started).total_seconds()) > 300:
             return False
         if channel == "text":
-            return bool(TEXT_METHOD.search(h["method"]) and re.search(r"outbound", h["method"], re.I)
-                        and squash(message["body"])[:30] in squash(h["text"]))
+            # Momentum logs a text from a saved template as "Template: <name>", and any other text as its message.
+            template = re.search(r"Template:\s*(.+)$", h["text"])
+            wanted = squash(self.config.get("template_name"))
+            same = squash(message["body"])[:30] in squash(h["text"]) or bool(template and wanted and squash(template.group(1)) == wanted)
+            return bool(TEXT_METHOD.search(h["method"]) and re.search(r"outbound", h["method"], re.I) and same)
         if channel == "call":
             brackets = lambda text: re.sub(r"\[\s*(.*?)\s*\]", r"[\1]", squash(text))
             return bool(CALL_METHOD.search(h["method"]) and brackets(f"[{message['call_result_name']}]") in brackets(h["text"]))

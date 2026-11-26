@@ -2,6 +2,7 @@ import json
 import os
 import math
 from pathlib import Path
+from urllib.parse import urlparse
 
 LOGIN_PATH = "/acrm/servlet/login"
 
@@ -19,12 +20,13 @@ def crm_urls(address):
 DEFAULTS = {
     "mode": "demo", "verified": False, "account_name": "Demo User",
     "max_batch": 0, "delay_seconds": 5, "hourly_limit": 0, "enforce_limits": False,
-    "daily_limit": 0, "external_daily_reserve": 0, "timezone": "America/Los_Angeles",
+    "daily_limit": 0, "external_daily_reserve": 0, "timezone": "America/Los_Angeles", "source_column": "",
     "report_url": "", "login_url": "", "dashboard_url": "", "allowed_origin": "", "selectors": {},
     "templates": [{"id": "follow-up", "name": "Vehicle follow-up"}, {"id": "check-in", "name": "Quick check-in"}],
     "preview_ttl_seconds": 900, "demo_leads": 50, "headless": False,
     "crm_profile": "", "report_id": 1056, "connection": "playwright",
     "ignore_contact_methods": "remark|prospect ?status|prospect ?alert|assigned|reminder",
+    "lead_scope": "mine", "repeat_after_hours": 0,
 }
 
 
@@ -38,16 +40,30 @@ def load_settings():
     path = directory / "config.json"
     if not path.exists():
         path.write_text(json.dumps(DEFAULTS, indent=2), encoding="utf-8")
-    config = {**DEFAULTS, **json.loads(path.read_text(encoding="utf-8-sig"))}
+    saved = json.loads(path.read_text(encoding="utf-8-sig"))
+    config = {**DEFAULTS, **saved}
     # Either address is enough: the other one is derived from it.
     known = str(config.get("allowed_origin") or "").strip() or str(config.get("login_url") or "").strip()
     if known:
         origin, login = crm_urls(known)
         config["allowed_origin"] = str(config.get("allowed_origin") or "").strip() or origin
         config["login_url"] = str(config.get("login_url") or "").strip() or login
+    if (config["mode"] == "live" and not config["crm_profile"] and not config["selectors"]
+            and (urlparse(config["allowed_origin"]).hostname or "").endswith(".udccrm.com")):
+        # A live configuration from an early build has no profile: this is the same Momentum, so use the mapped one.
+        config["crm_profile"] = "udc"
+        if config["connection"] == "playwright":
+            config["connection"] = "both"
+    if config["crm_profile"] == "udc" and "repeat_after_hours" not in saved:
+        config["repeat_after_hours"] = 72  # follow-ups: the same action is possible again once 72 hours have passed
+    if config["crm_profile"] == "udc" and "lead_scope" not in saved:
+        # The account owner asked to work everyone in the report; Momentum's own permissions and opt-outs still decide.
+        config["lead_scope"] = "all"
+    if config["crm_profile"] == "udc":
+        # Whatever an earlier guide had people type here: the first send of each action is still gated by the ledger.
+        config["verified"] = True
     validate(config)
     if config["crm_profile"] == "udc":
-        config["verified"] = True  # the adapter is mapped and live-tested; the first send is still gated by the ledger
         if not config["enforce_limits"]:
             # The account owner asked for no caps of the tool's own: Momentum's own limits and refusals still apply.
             config["max_batch"] = config["hourly_limit"] = config["daily_limit"] = 0
@@ -67,6 +83,10 @@ def validate(config):
         raise ValueError("selectors must map names to CSS selector strings")
     if not isinstance(config["crm_profile"], str) or config["crm_profile"] not in ("", "udc"):
         raise ValueError("crm_profile must be empty or udc")
+    if type(config["repeat_after_hours"]) is not int or not (config["repeat_after_hours"] == 0 or config["repeat_after_hours"] >= 72):
+        raise ValueError("repeat_after_hours must be 0 (never again) or 72 or more")
+    if config["lead_scope"] not in ("mine", "all"):
+        raise ValueError("lead_scope must be mine or all")
     import re
     if not isinstance(config["ignore_contact_methods"], str):
         raise ValueError("ignore_contact_methods must be a regular expression string")

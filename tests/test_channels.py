@@ -95,7 +95,7 @@ def test_load_offers_text_templates_and_call_choices(tmp_path):
         app.ledger.close()
 
 
-def test_text_needs_a_single_test_then_a_batch_runs_and_each_is_confirmed(tmp_path):
+def test_a_text_batch_runs_and_each_is_confirmed(tmp_path):
     browser = start(tmp_path, {str(i): phone_lead(f"L{i}", f"l{i}@example.test", cell=f"(310)555-01{i:02d}") for i in range(1, 5)})
     app = live_app(tmp_path)
     owner = "owner-text-000000000"
@@ -104,18 +104,11 @@ def test_text_needs_a_single_test_then_a_batch_runs_and_each_is_confirmed(tmp_pa
         preview, _ = run(app, owner, ["1", "2"], "text", "5430", dry=True)
         assert all(m["subject"] == "Text: Ace Text 2" and m["to"] for m in preview["messages"])
         assert browser.texts == []  # a dry run never sends
-        preview = app.preview(owner, ["1", "2"], "5430", "text")
-        try:
-            app.run(owner, {"preview_id": preview["id"], "dry_run": False, "test": False, "authorization": "SEND APPROVED EMAILS"})
-            raise AssertionError("a text batch must wait for the single test")
-        except ValueError as exc:
-            assert "single authorized live test (text)" in str(exc)
-        _, results = run(app, owner, ["1"], "text", "5430", test=True)
+        _, results = run(app, owner, ["1"], "text", "5430")  # no single test is needed first any more
         assert results["L1"]["status"] == "sent" and "Text Message (SMS) Outbound" in results["L1"]["detail"]
         _, results = run(app, owner, ["1", "2", "3"], "text", "5430")
         assert results["L1"]["status"] == "skipped"  # already texted: duplicate block and the 72-hour text rule
         assert results["L2"]["status"] == results["L3"]["status"] == "sent" and browser.texts == ["1", "2", "3"]
-        assert app.snapshot()["tests_done"] == {"email": False, "text": True, "call": False}
     finally:
         browser.running = False
         app.ledger.close()
@@ -129,7 +122,27 @@ def test_text_respects_do_not_text_and_missing_cell(tmp_path):
         app.load("owner-optout-0000000")
         preview = app.preview("owner-optout-0000000", ["1", "2"], "5430", "text")
         reasons = {m["name"]: m["exclusion"] for m in preview["messages"]}
-        assert "do-not-text" in reasons["Opted Out"] and reasons["No Phone"] == "No phone number on file"
+        assert "do-not-text" in reasons["Opted Out"] and reasons["No Phone"] == "No cell number on file to text"
+    finally:
+        browser.running = False
+        app.ledger.close()
+
+
+def test_an_uncertain_test_confirmed_by_a_person_unlocks_batches(tmp_path, monkeypatch):
+    browser = start(tmp_path, {"1": phone_lead("One", "a@example.test"), "2": phone_lead("Two", "b@example.test", cell="(310)555-0102")})
+    app = live_app(tmp_path)
+    owner = "owner-resolve-000000"
+
+    def unconfirmed(self, message):
+        raise RuntimeError("Send attempted but a unique new Contact History record could not be verified")
+
+    monkeypatch.setattr("momentum.bridge_adapter.MomentumBridge.send", unconfirmed)
+    try:
+        app.load(owner)
+        assert run(app, owner, ["1"], "text", "5430", test=True)[1]["One"]["status"] == "uncertain"
+        assert not app.snapshot()["tests_done"]["text"]
+        app.reconcile({"lead_id": "1:text", "resolution": "sent", "evidence": "Seen in Contact History just now", "confirmation": "I CHECKED CRM HISTORY"})
+        assert app.snapshot()["tests_done"] == {"email": False, "text": True, "call": False}
     finally:
         browser.running = False
         app.ledger.close()
@@ -185,6 +198,9 @@ def test_a_text_row_from_another_message_does_not_confirm_the_send(tmp_path):
             row = {"when": when(0), "method": "Text Message (SMS) Outbound", "by": SENDER, "text": "Hi One, this is Alex at Sample Motors."}
             assert crm._is_this_send(row, SENDER, message)
             assert not crm._is_this_send({**row, "text": "Hola, un mensaje distinto"}, SENDER, message)
+            # Exactly as the real Momentum logs a text sent from a saved template.
+            assert crm._is_this_send({**row, "text": f"{when(0)} Text Message (SMS) Outbound {SENDER} Template: Ace Text 2"}, SENDER, message)
+            assert not crm._is_this_send({**row, "text": "Template: Ace Text 22"}, SENDER, message)
             assert not crm._is_this_send({**row, "method": "Text Message (SMS) Inbound"}, SENDER, message)
             call = {"channel": "call", "call_result_name": "Left Message"}
             call_row = {"when": when(0), "method": "Outbound Call (310)555-0155", "by": SENDER, "text": "[ Left Message ] Lvm"}
@@ -209,3 +225,26 @@ def test_a_call_row_with_the_result_next_to_the_name_confirms_the_call(tmp_path)
             assert not crm._is_this_send({**row, "by": "Lee, Taylor [ Left Message ]"}, SENDER, call)
     finally:
         browser.running = False
+
+
+def test_a_new_build_keeps_the_tests_already_passed_by_this_account(tmp_path):
+    old = "test:" + "a" * 64
+    app = live_app(tmp_path)
+    app.ledger.set_meta(old, f"11/24/2026 6:23 PM Email Outbound {SENDER} Template: BLANK Email")
+    app.ledger.set_meta(old + ":text", "11/24/2026 6:55 PM Text Message (SMS) Outbound Lee, Taylor Template: CALL ME")
+    app.ledger.close()
+    app = live_app(tmp_path)
+    try:  # the email test was by this account; the text test was somebody else's
+        assert app.snapshot()["tests_done"] == {"email": True, "text": False, "call": False}
+    finally:
+        app.ledger.close()
+    app = Application(config(tmp_path, verified=False, source_column="Lead Source", lead_scope="all"))
+    try:
+        assert app.snapshot()["tests_done"]["email"] is True  # settings that do not change who sends where
+    finally:
+        app.ledger.close()
+    app = Application(config(tmp_path, verified=False, account_name="Taylor Lee"))
+    try:
+        assert app.snapshot()["tests_done"] == {"email": False, "text": True, "call": False}
+    finally:
+        app.ledger.close()

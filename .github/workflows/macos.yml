@@ -21,6 +21,7 @@ jobs:
         run: |
           bash -n setup-macos.sh
           bash -n start-macos.command
+          bash -n stop-macos.sh
           bash -n check-macos.command
           bash -n install-extension-macos.command
       - name: Run the shipped setup script

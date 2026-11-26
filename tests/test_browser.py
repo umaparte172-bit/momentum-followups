@@ -120,16 +120,18 @@ def test_ui_select_preview_dryrun_export_and_two_tabs(tmp_path):
             expect(page.locator(".lead")).to_have_count(120)
             page.locator("#all").check()
             page.locator("#template").select_option("check-in")
-            page.get_by_role("button", name="Preview messages").click()
+            page.locator("#quick").uncheck()  # preview every one of them
+            page.locator("#preview").click()
             expect(page.locator("#messages article")).to_have_count(120)
             expect(page.locator("#messages")).to_contain_text("A quick check-in")
             second = browser.new_page()
             second.goto(url)
             second.get_by_role("button", name="Sync report", exact=True).click()
             expect(second.locator(".lead")).to_have_count(120)
-            page.get_by_role("button", name="Run approved preview").click()
+            page.locator("#run").click()
             expect(page.locator("#results")).to_contain_text("dry-run", timeout=15000)
             expect(page.locator("#results tr")).to_have_count(121)
+            app.worker.join(30)
             rows = app.snapshot()["results"]
             assert len(rows) == 120
             assert sum(r["status"] == "dry-run" for r in rows) == 108

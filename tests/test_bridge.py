@@ -94,6 +94,24 @@ def paired(tmp_path, leads):
     return bridge, browser
 
 
+def test_a_poll_left_over_from_a_reloaded_extension_does_not_lose_the_command(tmp_path):
+    bridge = Bridge(tmp_path)
+    bridge.open_pairing()
+    token = bridge.hello(EXT)
+    old = []
+    stale = threading.Thread(target=lambda: old.append(bridge.poll(EXT, token, timeout=5)))
+    stale.start()
+    time.sleep(0.2)
+    got = []
+    fresh = threading.Thread(target=lambda: got.append(bridge.poll(EXT, token, timeout=5)))
+    fresh.start()
+    stale.join(2)
+    assert old == [None]
+    threading.Thread(target=lambda: bridge.call("ping", timeout=1), daemon=True).start()
+    fresh.join(3)
+    assert got[0]["name"] == "ping"
+
+
 def test_pairing_rules(tmp_path):
     bridge = Bridge(tmp_path)
     with pytest.raises(PermissionError):
@@ -312,7 +330,8 @@ def test_real_extension_pairs_and_runs_an_agent_action(tmp_path):
                 pytest.skip(f"Chromium cannot load extensions here: {exc}")
             try:
                 context.route("https://demo.udccrm.com/**", lambda route: route.fulfill(status=200, content_type="text/html", body=MOCK_SHELL))
-                worker = context.service_workers[0] if context.service_workers else context.wait_for_event("serviceworker", timeout=20000)
+                from tests.test_client_path import bridge_worker
+                worker = bridge_worker(context)
                 worker.evaluate("base => chrome.storage.local.set({base})", f"http://127.0.0.1:{server.server_port}")
                 app.bridge.open_pairing()
                 page = context.new_page()

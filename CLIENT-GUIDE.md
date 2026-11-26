@@ -1,6 +1,6 @@
 # Momentum follow-ups: a guide for you
 
-This tool works your "No Contact > 72 Hours" list for you, one lead at a time, through Momentum's own screens: it sends emails, sends texts, or logs calls, and every one lands in the lead's Contact History under your name. You choose the leads and the action, look at every message first, and press go once. That's it.
+This tool works your "No Contact > 72 Hours" list for you, one lead at a time, through Momentum's own screens: it sends emails, sends texts, or logs calls, and every one lands in the lead's Contact History under your name. You choose the leads and the action, preview if you like, and press go once. That's it.
 
 ## Setting it up on your Mac (about 10 minutes, once)
 
@@ -16,47 +16,53 @@ Not sure everything's fine? Close the tool (Ctrl+C in its Terminal window), keep
 
 ## Updating to a new build
 
-1. Close the tool (Ctrl+C in its Terminal window).
-2. Replace the tool's folder with the new one.
-3. In Terminal, in the new folder, run `bash setup-macos.sh` again. This step matters: it installs the new code and copies the new extension to `~/MomentumBridge-extension`. It won't ask for your name again, and your settings and send history are kept.
-4. In Chrome, open `chrome://extensions` and click the reload arrow on **Momentum Bridge**. Check that it now says version 1.5.0 or later.
-5. Double-click `start-macos.command`, then click **Sign in to CRM** once.
+Follow `UPDATE-MAC.md`: close the tool, run `bash setup-macos.sh` in the new folder, reload **Momentum Bridge** in `chrome://extensions`, reload your Momentum tab, then run `bash start-macos.command`. The bottom of the dashboard shows the build and extension that are really running.
 
-## Your first send of each kind (once per action)
+## Your first send
 
-Before the tool runs a batch of emails, texts or call logs, it wants one single live test of that action, so you can see it in Contact History with your own eyes. There's nothing to edit in any file: you just do the single test from the dashboard.
+There is no test step any more. Start with Dry run on to see what would happen, then turn it off.
 
-1. Click **Sync report**. It loads your whole *FR - No Contact > 72 Hours* list, about a minute for 480 leads. The message at the bottom tells you it matched the report, for example *478 leads loaded: all 478 report rows for you*.
-2. Pick one lead. Under **Action**, choose **Send email**, **Send text** or **Log call**. For email and text, pick a saved template. For a call, pick the call type and result, and type notes if you like. Click **Preview messages** and read it.
-3. Leave **Dry run** on and click **Run approved preview**. Nothing's sent. The tool just rechecks the lead.
-4. Now turn **Dry run** off, turn on **Single authorized live test**, type `SEND APPROVED EMAILS`, and run it. The result should say `sent`, and that lead's Contact History should show the new entry (*Email Outbound*, *Text Message (SMS) Outbound*, or *Outbound Call*) under your name.
-5. Click the little refresh arrow next to **CRM count today** to see Momentum's own count go up.
+1. Click **Sync report**. It loads your leads from the *FR - No Contact > 72 Hours* report; **Full report** lets you view and search everyone in it and filter by lead source.
+2. Tick the leads. Under **Action**, choose **Send email**, **Send text** or **Log call**.
+3. For email and text, choose a saved Momentum template, one of **My templates**, or **Write my own message** (see below). For a call, pick the call type and result, and type notes if you like.
+4. Optional: click **Preview** to see each personalized message and who will be skipped.
+5. Turn **Dry run** off, click **Send** (or **Log … call logs now**), then **Yes, do it now**. Each lead's Contact History shows the new entry (*Email Outbound*, *Text Message (SMS) Outbound*, or *Outbound Call*) under your name.
+
+## Your own messages
+
+Choose **Write my own message** in the message list. Type the subject (emails) and the message. Click **First name** (or Last name, Full name, My first name) to put a placeholder in, for example `Hi {customer_first_name},`. The tool reads each customer's name from Momentum and fills it in; someone without that name in Momentum is skipped. **Preview** shows the filled-in message for each person.
+
+To keep it, type a **Template name** and click **Save as my template**. It then appears under **My templates** for emails or texts. Pick it, change it and save again to update it, or click **Delete**. Your templates are kept on your Mac with your settings.
+
+## Long lists
+
+In **Full report**, filter by lead source and by **Has a cell number** (texts) or **Has a phone number** (call logs), then **Select all matching**, and send. If you preview a list of more than 25 people, **Quick start** shows a sample of 10; untick it to preview everyone. A long run waits out a short internet or Momentum outage.
 
 ## Day to day
 
 1. Click **Sync report**. Then tick one lead, several, or **Select all loaded leads** for the full list. **Select no contact 72 h+** picks the newest active leads that really have gone 72 hours without contact.
-2. Choose the action (email, text or call log) and the template or call result, then click **Preview messages**. The tool opens each lead in Momentum, checks it and fills in the screen, about 10 seconds per lead. You'll see *Checking lead 7 of 25*, and **Stop batch** cancels it.
-3. Read the previews. Anything it skipped has the reason next to it.
-4. Turn **Dry run** off, type the approval phrase, and click **Run approved preview**. The whole selection is queued and done one lead at a time, rechecking each lead right before it acts. There's no hourly or daily cap of the tool's own.
+2. Choose the action and the message (or the call type and result).
+3. **Preview** is optional. Without it, each person is checked once, right before their own email, text or call log, and skipped if anything is wrong.
+4. Turn **Dry run** off, click **Send**, then **Yes, do it now**. The whole selection is queued and done one lead at a time. There's no hourly or daily cap of the tool's own.
 5. Watch the **Activity log**: *sent*, *skipped* and *failed*. You can export it as CSV. **Pause**, **Resume** and **Stop** work any time, but something that's already been sent can't be pulled back.
 
-While it works, Chrome pulls the Momentum tab to the front and then brings you back to the tool. Keep that Chrome window where you can see it. Expect the full list of about 480 leads to take one to two hours, since each lead is checked live before anything is done.
+While it works, Chrome pulls the Momentum tab to the front and then brings you back to the tool. Keep that Chrome window where you can see it. Each lead takes about 10 to 20 seconds.
 
-A call log records a call you actually made. Only log calls in bulk when you really did make those calls with that result.
+**Call logs:** a call log records a call you made, so it is saved even if the person was contacted recently. Anyone Momentum marks as do-not-call is skipped and the rest are logged. If only one of a person's numbers is do-not-call, the call is logged against a number that may be called. If Momentum shows a warning for a lead, that lead is skipped with Momentum's message and the batch goes on.
 
-Don't be surprised if lots of leads get skipped. In a live trial of the 10 newest leads, only 1 was ready to email, because the rest had been contacted recently, had no email, or were opted out. Skipping those is the tool doing its job.
+Don't be surprised if lots of leads get skipped for emails and texts: the rest had been contacted recently, had no email or cell, or were opted out. Skipping those is the tool doing its job.
 
 ## The rules it follows for you
 
 | Rule | What it does |
 |---|---|
-| Whose leads | Only leads where you're **Sales Person 1**. |
+| Whose leads | Anyone in the report (build 0.13.0 and later, at the account owner's request), through Momentum's own screens and permissions. A lead Momentum does not allow is skipped with that reason. `"lead_scope": "mine"` in the config puts the Sales Person 1 restriction back. |
 | Opt-outs | Emails: skips any lead Momentum marks as opted out or bad email, on the lead page or on the email screen. Texts and calls: skips a number Momentum marks as do-not-text or do-not-call, and a lead with no phone. Texts only go to a cell number. |
 | "No contact for 72 hours" | Calls, texts, emails, visits and appointments count. **Notes, status changes, alerts and reminders don't.** Tasks set for the future never count. If it can't read a contact date, it plays safe and skips the lead. |
-| Recent email or text | Skips a lead that already got an email (or, for texts, a text) in the last 72 hours. |
-| No repeats | Never does the same action for the same lead twice, even after a restart. Emailing a lead doesn't stop you texting them later, and the other way round. |
-| Confirming each action | After it clicks Send or Save, the tool looks in Contact History for the one new entry it just made: an outbound email from this template, a text starting with this message, or a call log with this result, from you, in the last few minutes. If it can't find exactly that, it marks it *uncertain* and holds the lead. |
-| Limits | No hourly, daily or batch-size cap of the tool's own: the whole selection is queued and done one at a time, a few seconds apart. If Momentum refuses something or shows a warning, the tool stops and shows you the message instead of clicking through it. If you ever want caps back, set `"enforce_limits": true` with `hourly_limit` and `daily_limit` in the config. |
+| Recent email or text | Skips a lead that already got an email (or, for texts, a text) in the last 72 hours. Call logs are not held back by recent contact. |
+| Repeats | The same action for the same person is possible again 72 hours after it was done. Before that, and for any uncertain send, it stays blocked, even after a restart. `"repeat_after_hours": 0` makes it once only, for good. |
+| Confirming each action | After it clicks Send or Save, the tool looks in Contact History for the one new entry it just made: an outbound email (from this template, if one was used), a text starting with this message, or a call log with this result, from you, in the last few minutes. If it can't find exactly that, it marks it *uncertain* and holds the lead. |
+| Limits | No hourly, daily or batch-size cap of the tool's own: the whole selection is queued and done one at a time, a few seconds apart. If Momentum refuses something or shows a warning, the tool never clicks through it: that lead is skipped with Momentum's message and the batch goes on. If you ever want caps back, set `"enforce_limits": true` with `hourly_limit` and `daily_limit` in the config. |
 
 ## When something looks off
 

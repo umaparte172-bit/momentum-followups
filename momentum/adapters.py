@@ -30,6 +30,10 @@ class Demo:
     def inspect(self, lead_id):
         lead = next(x for x in self.leads() if x["id"] == lead_id)
         check = self.config.get("template_id") == "check-in"
+        custom = self.config.get("custom")
+        if custom:
+            from .core import personalize
+            return {**lead, "subject": personalize(custom["subject"], lead, "Demo User"), "body": personalize(custom["body"], lead, "Demo User")}
         return {**lead, "subject": "A quick check-in" if check else "Following up on your vehicle search", "body": f"Hi {lead['name']},\n\n" + ("How can I help today?" if check else "Are you still looking for your next vehicle?") + "\n\nDemo User"}
 
     def send(self, message):
@@ -169,6 +173,8 @@ class Momentum:
         lead = self._lead(lead_id)
         if eligible(lead, self.config["account_name"]):
             return lead
+        if self.config.get("custom"):
+            raise ValueError("Custom messages need the Momentum Bridge connection")
         self.require("history_entry", "history_sender", "history_recipient", "history_subject", "email_button", "template_select", "template_ready", "recipient", "subject", "body")
         self.history_before = self.page.locator(self.s["history_entry"]).all_text_contents()
         self.page.locator(self.s["email_button"]).click()

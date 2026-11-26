@@ -7,16 +7,24 @@ Pairing: the extension may only receive a token after the user clicks "Sign in t
 window). The first extension that asks during that window is bound by its origin; later requests need that token.
 """
 import collections
+import functools
 import json
 import os
 import secrets
 import threading
 import time
 import uuid
+from importlib.resources import files
 from pathlib import Path
 
 PAIRING_SECONDS = 180
 ALIVE_SECONDS = 45
+
+
+@functools.lru_cache(maxsize=1)
+def expected_version():
+    """The Momentum Bridge version that belongs to this build."""
+    return json.loads(files("momentum").joinpath("extension/manifest.json").read_text(encoding="utf-8"))["version"]
 
 
 class BridgeError(RuntimeError):
@@ -32,6 +40,8 @@ class Bridge:
         self.token = None
         self.last_seen = 0.0
         self.account = ""
+        self.version = ""
+        self.polls = 0
         self.queue = []
         self.results = {}
         self.timings = collections.deque(maxlen=30)
@@ -79,20 +89,27 @@ class Bridge:
             raise PermissionError("Not paired")
 
     # --- extension side ---------------------------------------------------------------------
-    def poll(self, origin, token, account="", timeout=20):
+    def poll(self, origin, token, account="", timeout=20, version=None):
         with self.cond:
             self._check(origin, token)
             self.last_seen = time.monotonic()
+            # Only the newest poll may take work: one left over from a reloaded extension would lose the command.
+            self.polls += 1
+            mine = self.polls
+            self.cond.notify_all()
             if account:
                 self.account = account
+            if version is not None:
+                self.version = version
             deadline = time.monotonic() + timeout
             while not self.queue and not self.stopped:
                 left = deadline - time.monotonic()
                 if left <= 0:
                     return None
                 self.cond.wait(left)
-                self.last_seen = time.monotonic()
-            return self.queue.pop(0) if self.queue else None
+                if mine != self.polls:
+                    return None
+            return self.queue.pop(0) if self.queue and mine == self.polls else None
 
     def result(self, origin, token, cid, ok, value=None, error=None):
         with self.cond:
@@ -107,6 +124,7 @@ class Bridge:
 
     def status(self):
         return {"paired": bool(self.token), "connected": self.connected(), "account": self.account if self.connected() else "",
+                "version": self.version, "expected_version": expected_version(), "outdated": self.connected() and self.version != expected_version(),
                 "pairing": self.pairing_open(), "recent_calls": list(self.timings)[-8:]}
 
     def call(self, name, timeout=150, **args):

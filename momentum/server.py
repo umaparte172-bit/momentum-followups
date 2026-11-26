@@ -7,7 +7,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib.resources import files
 from urllib.parse import urlparse, parse_qs
 
-from .service import Application
+from . import VERSION
+from .service import Application, short_error
 from .settings import load_settings
 
 
@@ -67,11 +68,12 @@ def create_server(app, port=8765):
                     return self.bridge_reply({"token": app.bridge.hello(origin)})
                 if parsed.path == "/bridge/poll" and self.command == "GET":
                     query = parse_qs(parsed.query)
-                    cmd = app.bridge.poll(origin, query.get("token", [""])[0], query.get("account", [""])[0])
+                    cmd = app.bridge.poll(origin, query.get("token", [""])[0], query.get("account", [""])[0], version=query.get("version", [""])[0])
                     return self.bridge_reply({"cmd": cmd} if cmd else {})
                 if parsed.path == "/bridge/result" and self.command == "POST":
                     size = int(self.headers.get("Content-Length", "0"))
-                    if not 0 < size <= 20000000:
+                    # The whole report (about 65,000 rows) comes back in one answer.
+                    if not 0 < size <= 100000000:
                         raise ValueError("Invalid request size")
                     data = json.loads(self.rfile.read(size))
                     app.bridge.result(origin, data.get("token", ""), data.get("id", ""), data.get("ok"), data.get("value"), data.get("error"))
@@ -107,6 +109,8 @@ def create_server(app, port=8765):
             if parsed.path in ("/api/results", "/api/export"):
                 rows = app.ledger.results(parse_qs(parsed.query).get("batch", [""])[0])
                 if parsed.path == "/api/results":
+                    rows = [{k: r.get(k) for k in ("id", "name", "email", "status", "detail")} for r in rows]
+                if parsed.path == "/api/results":
                     return self.reply(rows)
                 output = io.StringIO()
                 writer = csv.writer(output)
@@ -123,10 +127,10 @@ def create_server(app, port=8765):
             if urlparse(self.path).path.startswith("/bridge/") and self.headers.get("Host") == self.host():
                 return self.do_bridge(urlparse(self.path))
             if self.headers.get("Host") != self.host() or self.headers.get("Origin") != "http://"+self.host() or self.headers.get("X-Session-Token") != app.token:
-                return self.reply({"error": "Invalid local session"}, 403)
+                return self.reply({"error": "Invalid local session: the tool was restarted or updated. Reload this page, then try again."}, 403)
             try:
                 size = int(self.headers.get("Content-Length", "0"))
-                if not 0 <= size <= 1000000:
+                if not 0 <= size <= 4000000:  # the whole report can be selected
                     raise ValueError("Invalid request size")
                 self.connection.settimeout(30)
                 data = json.loads(self.rfile.read(size) or b"{}")
@@ -138,12 +142,26 @@ def create_server(app, port=8765):
                 path = self.path
                 if path == "/api/leads":
                     result = app.load(owner)
+                elif path == "/api/full-report":
+                    result = app.full_report(data)
                 elif path == "/api/preview":
-                    result = app.preview(owner, data.get("ids"), data.get("template"), data.get("channel") or "email", data.get("call"))
+                    result = app.preview(owner, data.get("ids"), data.get("template"), data.get("channel") or "email", data.get("call"), False, data.get("custom"))
+                elif path == "/api/preview-start":
+                    result = app.start_preview(owner, data.get("ids"), data.get("template"), data.get("channel") or "email", data.get("call"), data.get("quick") is True, data.get("custom"))
+                elif path == "/api/my-templates":
+                    result = {"templates": app.my_templates()}
+                elif path == "/api/save-template":
+                    result = app.save_template(data)
+                elif path == "/api/delete-template":
+                    result = app.delete_template(data)
+                elif path == "/api/preview-result":
+                    result = app.preview_result(owner, data.get("job"))
                 elif path == "/api/run":
                     result = app.run(owner, data)
                 elif path == "/api/bridge-reload":
                     result = app.reload_extension()
+                elif path == "/api/describe-screen":
+                    result = app.bridge.agent("describeScreen", timeout=20)  # read only: which Momentum windows are open
                 elif path == "/api/crm-stats":
                     result = app.crm_stats()
                 elif path == "/api/crm-entry":
@@ -169,7 +187,7 @@ def create_server(app, port=8765):
             except (ValueError, KeyError, TypeError) as exc:
                 self.reply({"error": str(exc)}, 400)
             except Exception as exc:
-                self.reply({"error": str(exc)}, 500)
+                self.reply({"error": short_error(exc)}, 500)
 
     return ThreadingHTTPServer(("127.0.0.1", port), Handler)
 
@@ -205,7 +223,7 @@ def main():
     with StorageLock(config["data_dir"]):
         app = Application(config)
         server = create_server(app, args.port)
-        print(f"Momentum follow-ups: http://127.0.0.1:{server.server_port}", flush=True)
+        print(f"Momentum follow-ups {VERSION}: http://127.0.0.1:{server.server_port}", flush=True)
         print(f"Configuration and private data: {config['data_dir']}", flush=True)
         try:
             server.serve_forever()

@@ -6,10 +6,10 @@ This is a small tool that works your follow-up list for you, one lead at a time,
 
 ## What it does
 
-- Pulls your leads from the **FR - No Contact > 72 Hours** report and keeps only the ones where you're Sales Person 1.
+- Pulls the **FR - No Contact > 72 Hours** report. **My leads** are the ones where you're Sales Person 1, and the only ones that can be emailed, texted or logged. **Full report** shows everyone in it, to view and search only, with filters for one or several lead sources; it is kept in memory and is gone when the tool stops.
 - Shows each lead with how long ago it was created and last contacted, newest first.
 - Shows that the list matches the report: the number of leads, the report rows for you, and the rows in the whole report.
-- Three actions: **Send email** (saved email template), **Send text** (saved text template, to the lead's cell) and **Log call** (call type, result and notes). Every one is previewed first.
+- Three actions: **Send email** (saved email template), **Send text** (saved text template, to the lead's cell) and **Log call** (call type, result and notes). Emails and texts can use your own message with placeholders such as `{customer_first_name}`, and can be saved as your own templates. Preview is optional.
 - Rechecks each lead right before acting, and skips it if anything has changed.
 - Keeps a permanent record of what's been done, so the same action never happens twice for a lead, even after a restart.
 - Queues the whole selection with no hourly, daily or batch-size cap of its own, a few seconds apart (`"enforce_limits": true` brings caps back).
@@ -68,19 +68,19 @@ The settings you're most likely to change: `account_name` (must match the name M
 2. Select leads (or use **Select no contact 72 h+**) and choose a template.
 3. **Preview** opens each lead in Momentum, checks it and fills the template. That takes about 10 seconds a lead. Skipped leads show why. **Stop** cancels the preview.
 4. Run with **Dry run** on first. Each lead is rechecked and nothing is sent.
-5. To send, turn off Dry run and type `SEND APPROVED EMAILS`. Approvals belong to the tab that made them, expire after 15 minutes and work once.
-6. The first live run of each action (email, text, call log) has to be a single authorized test, which you then check in Contact History. Batches of that action stay locked until it has passed. Changing the configuration means a new test. There's no "verified" flag to edit for the dealership profile.
+5. To send, turn off Dry run, click Send and confirm. Without a preview, each lead is checked once right before its action. A preview's approval belongs to the tab that made it, expires after 15 minutes and works once.
+6. There is no single-test step: batches can run straight away (build 0.15.0, at the account owner's request).
 7. **Pause**, **Resume** and **Stop** work at any time. An email that's already gone can't be undone.
 
 ## The rules it applies
 
 | Rule | What the tool does |
 |---|---|
-| Whose leads | Only leads where you're Sales Person 1. |
+| Whose leads | Anyone in the report (build 0.13.0 and later, at the account owner's request), through Momentum's own screens and permissions. A lead Momentum does not allow is skipped with that reason. `"lead_scope": "mine"` in the config puts the Sales Person 1 restriction back. |
 | Opt-outs | Email: skips a lead if Momentum marks its email as opted out or bad, on the lead page or on the email screen. Text and call: skips a number marked do-not-text or do-not-call (the `dont`/`bad` flags on the lead page), and leads with no phone. Texts go to the cell number only. |
 | Contact in the last 72 hours | Calls, texts, emails, visits and appointments count. Notes, status changes, alerts and reminders don't (change this with `ignore_contact_methods`). Future-dated tasks never count. A contact time it can't read counts as a *recent* contact, so the lead is skipped. |
 | Email in the last 72 hours | Skips the lead. |
-| Duplicates | A lead or address that's been sent, or is uncertain, stays blocked across templates and batches. |
+| Duplicates | The same action for the same person is possible again 72 hours after it was done. Before that, and for any uncertain send, it stays blocked, even after a restart. `"repeat_after_hours": 0` makes it once only, for good. |
 | Recipients | The email screen must show exactly the lead's address, with no extra CC or BCC, and the content must match the preview. |
 | Confirming an action | After clicking Send or Save the tool reloads the lead and needs a single new Contact History row by you from the last few minutes: an outbound email from the chosen template, an outbound text starting with this message, or an outbound call with this result. Otherwise the result is "uncertain" and the lead stays blocked until you check. |
 | Momentum's own warnings | If Momentum shows a message box while sending a text or saving a call, the tool never clicks OK: it records the message, stops, and shows it. |
@@ -117,7 +117,7 @@ If Momentum doesn't answer for one lead, that lead is marked "could not be check
 .venv/bin/python -m pytest tests -q
 ```
 
-There are 89 tests. They use a simulated Momentum and a fake extension, so they never email anyone. They run on Windows and on a macOS 15 build on GitHub. `MOMENTUM_TEST_CHANNEL=chrome` uses your installed Chrome instead of the bundled Chromium.
+There are 140 tests. They use a simulated Momentum, so they never email anyone. `tests/test_client_path.py` drives the real dashboard and the real Chrome extension against a mock Momentum. The GitHub workflow also runs them on macOS 15. `MOMENTUM_TEST_CHANNEL=chrome` uses your installed Chrome instead of the bundled Chromium.
 
 ## Troubleshooting
 

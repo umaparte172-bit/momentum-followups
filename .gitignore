@@ -16,3 +16,6 @@ momentum_followups-*/
 
 # Real client and customer details: handed over separately, never published
 PRIVATE-NOTES.md
+
+# Names customers: sent to the client privately, never published
+.client-messages/

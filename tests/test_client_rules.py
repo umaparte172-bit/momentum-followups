@@ -300,6 +300,26 @@ def test_first_single_send_works_without_the_verified_flag(tmp_path):
         app.ledger.close()
 
 
+def test_a_slow_lead_page_is_tried_once_more(tmp_path, monkeypatch):
+    bridge, browser = start(tmp_path, {"1": lead("One", "a@example.test", 100)})
+    app = Application(config(tmp_path, delay_seconds=0))
+    original, calls = MomentumBridge.inspect, []
+
+    def slow_once(self, lead_id):
+        calls.append(lead_id)
+        if len(calls) == 1:
+            raise RuntimeError("Timed out waiting for the lead page")
+        return original(self, lead_id)
+
+    monkeypatch.setattr(MomentumBridge, "inspect", slow_once)
+    try:
+        app.load("slow-owner-000000000")
+        assert app.preview("slow-owner-000000000", ["1"], "T1")["messages"][0]["exclusion"] is None and len(calls) == 2
+    finally:
+        browser.running = False
+        app.ledger.close()
+
+
 def test_one_lead_that_will_not_load_does_not_stop_a_long_preview_or_run(tmp_path, monkeypatch):
     bridge, browser = start(tmp_path, {str(i): lead(f"L{i}", f"l{i}@example.test", 100) for i in range(1, 5)})
     app = Application(config(tmp_path, max_batch=0, hourly_limit=0, daily_limit=0, delay_seconds=0))

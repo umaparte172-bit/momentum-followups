@@ -4,10 +4,12 @@ include config.example.json
 include config.live.example.json
 include LIVE-TEST.md
 include setup-macos.sh
+include stop-macos.sh
 include start-macos.command
 include check-macos.command
 include install-extension-macos.command
 include CLIENT-GUIDE.md
+include UPDATE-MAC.md
 include HANDOVER.md
 include uv.lock
-recursive-include tests *.py
+recursive-include tests *.py *.pem

@@ -17,15 +17,15 @@ Steps 1 to 8 are safe. Nothing is sent until step 9.
 4. Double-click `start-macos.command`. The tool opens at http://127.0.0.1:8765.
 5. With Momentum signed in in Chrome, click **Sign in to CRM**. The bar should go green: *Connected to Momentum as* your name. (Prefer the separate window? Click **Connect automation browser** and sign in there with your code.)
 6. Click **Sync report**. You should see your whole list (478 leads when this was last checked), and the message at the bottom should say it matched the report, for example *478 leads loaded: all 478 report rows for you, of 64,830 rows in the whole report*. Your email templates, text templates and call choices load too. If the list is empty or you see an error, stop and send me the message.
-7. Pick **one** lead, choose the **Action** (Send email, Send text or Log call) and the template or call result, click **Preview messages**, and read it. The lead should show as ready. If it's skipped, the reason is shown.
+7. Pick **one** lead, choose the **Action** (Send email, Send text or Log call) and the template or call result, click **Preview (optional)**, and read it. The lead should show as ready. If it's skipped, the reason is shown.
 8. With **Dry run** on, run it. You should see `dry-run`, and nothing new in Contact History.
-9. The real one, only when you're happy to go ahead: pick exactly one lead, preview, turn on **Single authorized live test**, turn **Dry run** off, type `SEND APPROVED EMAILS`, and run. You should see `sent`, with the new Contact History entry in the result.
+9. The real one, only when you're happy to go ahead: pick one lead, turn **Dry run** off, click **Send** and **Yes, do it now**. You should see `sent`, with the new Contact History entry.
 10. Check it yourself in Momentum: open the lead and look at Contact History. There should be an *Email Outbound*, *Text Message (SMS) Outbound* or *Outbound Call* entry under your name. Click the refresh arrow next to **CRM count today** to see the count go up.
 11. Do steps 7 to 10 once for each action you want to use. After that, select several leads or the whole list and run the batch.
 
 A quick read-only health check any time the tool is closed: keep Momentum open in Chrome and run `bash check-macos.command`. It uses your Chrome tab and never clicks Send or Save.
 
-Updating from an earlier build? Close the tool, replace the folder, run `bash setup-macos.sh` again (it installs the new code), and reload Momentum Bridge in `chrome://extensions`.
+Updating from an earlier build? Follow `UPDATE-MAC.md`.
 
 ## If something goes wrong
 - **A send says uncertain:** don't resend. Check the lead's Contact History, then use **Resolve an uncertain send**.

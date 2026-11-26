@@ -1,7 +1,7 @@
 // Momentum Bridge: page agent. Runs inside the signed-in Momentum tab (page context) and only exposes a fixed set of
 // read and compose actions. Nothing here accepts arbitrary code from the local server.
 (() => {
-  const VERSION = 6;
+  const VERSION = 15;
   if (window.__momentumAgent && window.__momentumAgent.version === VERSION) return;
   // Chrome throttles timers in tabs that have been hidden for a while (to about one tick a minute), which would make
   // every wait crawl. While the tab is hidden, wait by yielding to the event loop instead of using timers.
@@ -13,9 +13,45 @@
       channel.port2.postMessage(0);
     });
   };
+  // Counts the requests a Momentum page makes (XMLHttpRequest and fetch), so the tool knows when a save has finished.
+  function watchRequests(wins) {
+    const net = { started: 0, pending: 0, last: Date.now(), undo: [] };
+    const done = () => { net.pending = Math.max(0, net.pending - 1); net.last = Date.now(); };
+    for (const w of new Set(wins.filter(Boolean))) {
+      try {
+        const send = w.XMLHttpRequest.prototype.send;
+        w.XMLHttpRequest.prototype.send = function () { net.started++; net.pending++; this.addEventListener('loadend', done, { once: true }); return send.apply(this, arguments); };
+        net.undo.push(() => { w.XMLHttpRequest.prototype.send = send; });
+        if (w.fetch) {
+          const f = w.fetch;
+          w.fetch = function () { net.started++; net.pending++; return f.apply(this, arguments).finally(done); };
+          net.undo.push(() => { w.fetch = f; });
+        }
+      } catch (e) { /* not reachable */ }
+    }
+    net.stop = () => net.undo.forEach(u => { try { u(); } catch (e) { /* gone */ } });
+    return net;
+  }
+  // A second line of defence next to guard.js: every Momentum frame that can be reached gets the same message-box
+  // handling, so a warning raised after it loads (when a number is picked, on Save) can never freeze the tab.
+  function armFrames(win) {
+    try {
+      if (!win.__momentumGuard && !win.__momentumArmed) {
+        const original = { alert: win.alert, confirm: win.confirm, prompt: win.prompt };
+        const working = () => Date.now() < (window.__momentumAgentUntil || 0);
+        const note = m => (window.__momentumSeen = window.__momentumSeen || []).push(String(m == null ? '' : m));
+        win.alert = function (m) { if (working()) return void note(m); return original.alert.apply(this, arguments); };
+        win.confirm = function (m) { if (working()) { note(m); return false; } return original.confirm.apply(this, arguments); };
+        win.prompt = function (m) { if (working()) { note(m); return null; } return original.prompt.apply(this, arguments); };
+        win.__momentumArmed = true;
+      }
+      for (let i = 0; i < win.frames.length; i++) armFrames(win.frames[i]);
+    } catch (e) { /* another site's frame */ }
+  }
   async function until(fn, ms, label) {
     const t0 = Date.now();
     for (;;) {
+      armFrames(window);
       let v = null;
       try { v = fn(); } catch (e) { v = null; }
       if (v) return v;
@@ -33,11 +69,54 @@
   const logCallDoc = () => { const f = activitiesDoc().getElementById('activities_iframe'); const d = f && f.contentDocument; return d && d.querySelector('select[name="logCallView.callResultID"]') ? d : null; };
   // A message box from the CRM (for example a compliance warning) must never be answered automatically: record it,
   // refuse any confirmation, and report it as an error instead.
+  // Every message box goes into one list, from whichever Momentum frame it comes (guard.js records the others).
   function guardDialogs(win) {
-    const seen = [];
-    win.alert = m => { seen.push(String(m)); };
-    win.confirm = m => { seen.push(String(m)); return false; };
-    return seen;
+    const all = window.__momentumSeen = window.__momentumSeen || [], base = all.length;
+    win.alert = m => { all.push(String(m)); };
+    win.confirm = m => { all.push(String(m)); return false; };
+    return { get length() { return all.length - base; }, join: sep => all.slice(base).join(sep) };
+  }
+
+  // While an action screen opens, a message from Momentum (for example "do not call") must not freeze the page:
+  // it is recorded, any question is answered No, and the lead is skipped with Momentum's own words.
+  function guardOpening() {
+    const wins = [window];
+    try { wins.push(leadFrame().contentWindow); } catch (e) { /* not loaded */ }
+    try { wins.push(activitiesDoc().defaultView); } catch (e) { /* not loaded */ }
+    const seen = [], saved = wins.map(w => [w, w.alert, w.confirm]);
+    wins.forEach(w => { w.alert = m => { seen.push(String(m)); }; w.confirm = m => { seen.push(String(m)); return false; }; });
+    return { seen, restore: () => saved.forEach(([w, a, c]) => { try { w.alert = a; w.confirm = c; } catch (e) { /* gone */ } }) };
+  }
+  // The lead page's own Email / Text / Log Call button. Missing or disabled means Momentum does not allow it here.
+  async function press(id, label, ready) {
+    let button = null;
+    try { button = await until(() => { const d = activitiesDoc(); return d.readyState === 'complete' && d.getElementById(id); }, 15000, label); } catch (e) { /* not offered */ }
+    if (!button || button.disabled || button.getAttribute('aria-disabled') === 'true' || button.classList.contains('disabled')) throw new Error('Momentum does not allow ' + label + ' on this lead for your account');
+    // The window left over from the previous lead must never be taken for the new one: mark it as old first.
+    for (const d of [(() => { const f = composerFrame(); return f && f.contentDocument; })(), (() => { const f = activitiesDoc().getElementById('activities_iframe'); return f && f.contentDocument; })()]) {
+      try { if (d) d.__momentumStale = true; } catch (e) { /* not reachable */ }
+    }
+    const guard = guardOpening();
+    try {
+      button.click();
+      // If Momentum reuses the same window rather than loading a new one, it is accepted after a while; the recipient is checked anyway.
+      const t0 = Date.now();
+      const found = await until(() => { if (guard.seen.length) return 'said'; const v = ready(); return v && (!v.__momentumStale || Date.now() - t0 > 8000) ? v : null; }, 25000, label);
+      if (found === 'said') throw new Error('Momentum does not allow ' + label + ' on this lead: ' + guard.seen.join(' / '));
+      return found;
+    } finally { guard.restore(); }
+  }
+  // Puts a custom message into the email window's editor, the way typing would.
+  function setEditor(c, html) {
+    const w = c.defaultView, el = c.querySelector('.fr-element');
+    if (!el) throw new Error('The email editor was not found');
+    let done = false;
+    try { const list = w.FroalaEditor && w.FroalaEditor.INSTANCES; const ed = list && list.find(e => e.el === el); if (ed) { ed.html.set(html); ed.undo && ed.undo.saveStep && ed.undo.saveStep(); done = true; } } catch (e) { /* other version */ }
+    if (!done) { try { const box = el.closest('.fr-box'); const src = box && box.previousElementSibling; if (w.jQuery && src && w.jQuery(src).data('froala.editor')) { w.jQuery(src).froalaEditor('html.set', html); done = true; } } catch (e) { /* other version */ } }
+    if (!done) { el.innerHTML = html; }
+    ['input', 'keyup', 'change'].forEach(t => el.dispatchEvent(new Event(t, { bubbles: true })));
+    const box = el.closest('.fr-box'), src = box && box.previousElementSibling;
+    if (src && src.tagName === 'TEXTAREA') src.value = html;
   }
 
   function smsState() {
@@ -76,7 +155,17 @@
     const x = dialog && dialog.querySelector('.ui-dialog-titlebar-close, .ui-dialog-titlebar button');
     if (x) x.click();
   }
-  const composerGone = () => until(() => { const f = composerFrame(); return !f || !f.offsetParent; }, 15000, 'the email window to close');
+  // Momentum sometimes ignores the first click on Close: click it again every few seconds until the window is gone.
+  const composerGone = async () => {
+    const t0 = Date.now();
+    let last = t0;
+    return until(() => {
+      const f = composerFrame();
+      if (!f || !f.offsetParent) return true;
+      if (Date.now() - last > 3000) { last = Date.now(); closeComposerNow(); }
+      return false;
+    }, 20000, 'the email window to close');
+  };
 
   function composerState() {
     const c = composerDoc();
@@ -92,8 +181,15 @@
     };
   }
 
+  // Momentum's own first / last name fields on the lead page, when it has them.
+  function nameField(d, re) {
+    const el = [...d.querySelectorAll('input')].find(i => i.type !== 'hidden' && (re.test(i.id || '') || re.test(i.name || '')));
+    return el ? clean(el.value) : '';
+  }
+
   window.__momentumAgent = {
     version: VERSION,
+    arm() { armFrames(window); return !!window.__momentumGuard; },
     async ping() {
       const u = document.getElementById('username');
       return { shell: !!leadFrame(), account: u ? u.textContent.split(':')[0].trim() : null };
@@ -137,14 +233,14 @@
           const text = item && item.querySelector('button.preferred.text');
           return { kind, phone: input ? input.value.trim() : '', call: call ? call.className : '', text: text ? text.className : '' };
         }).filter(p => p.phone),
+        firstName: nameField(d, /first\s*_?name$/i),
+        lastName: nameField(d, /last\s*_?name$/i),
         name: clean((d.body.innerText || '').split('\n')[0]),
         history: rows
       };
     },
     async openComposer() {
-      const act = leadDoc().querySelector('iframe[name=cap_activities_iframe]').contentDocument;
-      act.getElementById('email').click();
-      const c = await until(() => { const doc = composerDoc(); const sel = doc && doc.querySelector('select[name=templateId]'); return sel && sel.options.length > 1 && doc; }, 25000, 'the saved templates');
+      const c = await press('email', 'Send Email', () => { const doc = composerDoc(); const sel = doc && doc.querySelector('select[name=templateId]'); return sel && sel.options.length > 1 && doc; });
       const options = [...c.querySelector('select[name=templateId]').options].filter(o => o.value && !o.disabled).map(o => ({ id: o.value, name: clean(o.text) }));
       return { templates: options };
     },
@@ -159,22 +255,47 @@
       return composerState();
     },
     async composerState() { return composerState(); },
+    // A custom message: subject and body are written in, no saved template is used.
+    async fillComposer(spec) {
+      const c = composerDoc();
+      if (!c) throw new Error('The email window is not open');
+      const subject = c.querySelector('input[name=subject]');
+      if (!subject) throw new Error('The subject field was not found');
+      subject.value = String(spec.subject || '');
+      ['input', 'change'].forEach(t => subject.dispatchEvent(new Event(t, { bubbles: true })));
+      setEditor(c, String(spec.html || ''));
+      await until(() => { const s = composerState(); return s.subject.trim() && s.body.trim(); }, 10000, 'the message to fill in');
+      return composerState();
+    },
     async sendComposer() {
       const c = composerDoc();
       if (!c) throw new Error('The email window is not open');
       const btn = [...c.querySelectorAll('button[type=submit]')].find(b => /send/i.test(b.textContent));
       if (!btn) throw new Error('Send button not found');
+      const seen = guardDialogs(composerFrame().contentWindow);
       btn.click();
-      await composerGone();
+      await until(() => seen.length || !composerFrame() || !composerFrame().offsetParent, 45000, 'the email window to close');
+      if (seen.length) throw new Error('Momentum said: ' + seen.join(' / '));
       return true;
     },
     async closeComposer() { closeComposerNow(); await composerGone(); return true; },
+    // Read only: what dialogs are showing, so a window that will not close can be explained.
+    async describeScreen() {
+      const vis = el => !!(el && (el.offsetWidth || el.offsetHeight || el.getClientRects().length));
+      const dialogs = [...document.querySelectorAll('.ui-dialog, [role=dialog], .modal')].filter(vis).map(d => ({
+        title: clean((d.querySelector('.ui-dialog-title') || {}).textContent),
+        text: clean(d.innerText).slice(0, 300),
+        buttons: [...d.querySelectorAll('button, input[type=button]')].filter(vis).map(b => clean(b.textContent || b.value)).slice(0, 12),
+        frame: (d.querySelector('iframe') || {}).id || ''
+      }));
+      const f = composerFrame();
+      return { dialogs, composerVisible: !!(f && f.offsetParent), frames: [...document.querySelectorAll('iframe')].filter(vis).map(x => x.id || x.name).slice(0, 12) };
+    },
     // --- text messages (Send Text Message dialog) ---
     async openSms() {
       closeComposerNow();
       await composerGone();
-      activitiesDoc().getElementById('sms').click();
-      const c = await until(() => { const doc = composerDoc(); const sel = doc && doc.querySelector('#smsTemplate'); return sel && sel.options.length > 1 && doc; }, 25000, 'the text message window');
+      const c = await press('sms', 'Send Text', () => { const doc = composerDoc(); const sel = doc && doc.querySelector('#smsTemplate'); return sel && sel.options.length > 1 && doc; });
       return { templates: [...c.querySelector('#smsTemplate').options].filter(o => o.value && !o.disabled).map(o => ({ id: o.value, name: clean(o.text) })) };
     },
     async selectSmsTemplate(id) {
@@ -188,6 +309,14 @@
       return smsState();
     },
     async smsState() { return smsState(); },
+    async fillSms(body) {
+      const c = composerDoc();
+      const box = c && c.querySelector('textarea[name=emailBody]');
+      if (!box) throw new Error('The text message window is not open');
+      box.value = String(body || '');
+      ['input', 'keyup', 'change'].forEach(t => box.dispatchEvent(new Event(t, { bubbles: true })));
+      return smsState();
+    },
     async sendSms() {
       const c = composerDoc();
       if (!c || !c.querySelector('#smsTemplate')) throw new Error('The text message window is not open');
@@ -203,8 +332,7 @@
     async openLogCall() {
       closeComposerNow();
       await composerGone();
-      activitiesDoc().getElementById('log_call').click();
-      const c = await until(() => logCallDoc(), 25000, 'the Log Call panel');
+      const c = await press('log_call', 'Log Call', () => logCallDoc());
       const opts = n => [...c.querySelector(`[name="${n}"]`).options].filter(o => o.value).map(o => ({ id: o.value, name: clean(o.text) }));
       return { types: opts('logCallView.callTypeID'), results: opts('logCallView.callResultID'), phones: opts('logCallView.contactedPhone') };
     },
@@ -233,8 +361,16 @@
       const btn = [...c.querySelectorAll('button')].find(b => /^\s*save\s*$/i.test(b.textContent));
       if (!btn) throw new Error('Save button not found');
       const seen = guardDialogs(c.defaultView);
+      c.__momentumStale = true;
+      // Momentum keeps (or reloads) the Log Call panel after saving, so waiting for it to close only wastes time.
+      // Done as soon as Momentum answers, the panel reloads, or Momentum's own save request has finished.
+      const net = watchRequests([c.defaultView, activitiesDoc().defaultView, leadFrame().contentWindow, window]);
+      const t0 = Date.now();
       btn.click();
-      await until(() => seen.length || !logCallDoc(), 30000, 'the call log to save');
+      try {
+        await until(() => seen.length || logCallDoc() !== c || (net.started && !net.pending && Date.now() - net.last > 300)
+          || (!net.started && Date.now() - t0 > 3000) || Date.now() - t0 > 15000, 30000, 'the call log to save');
+      } finally { net.stop(); }
       if (seen.length) throw new Error('Momentum said: ' + seen.join(' / '));
       return true;
     },

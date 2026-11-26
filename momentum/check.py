@@ -2,7 +2,7 @@ import copy
 import threading
 
 from .adapters import adapter
-from .core import LeadExcluded, eligible
+from .core import LeadExcluded, eligible, required_owner
 
 
 def run_check(config, factory=adapter, out=print, sample=5):
@@ -56,7 +56,7 @@ def run_check(config, factory=adapter, out=print, sample=5):
                 result = step(f"Inspect lead {lead['id']}", lambda lead=lead: inspect(lead["id"]))
                 if result is None:
                     continue
-                reason = result.get("__skip") or eligible(result, config["account_name"])
+                reason = result.get("__skip") or eligible(result, required_owner(config))
                 if reason:
                     skipped += 1
                     out(f"      skipped: {reason}")

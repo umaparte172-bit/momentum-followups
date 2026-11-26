@@ -2,8 +2,8 @@
 // is already signed in in this browser, so no second login or two-step code is needed.
 const CRM = 'https://*.udccrm.com/';
 const DEFAULT_BASE = 'http://127.0.0.1:8765';
-const AGENT_FUNCTIONS = ['ping', 'openLead', 'readLead', 'openComposer', 'selectTemplate', 'composerState', 'sendComposer', 'closeComposer', 'dashboardCounts',
-  'openSms', 'selectSmsTemplate', 'smsState', 'sendSms', 'openLogCall', 'fillLogCall', 'logCallState', 'saveLogCall'];
+const AGENT_FUNCTIONS = ['ping', 'openLead', 'readLead', 'openComposer', 'selectTemplate', 'fillComposer', 'composerState', 'sendComposer', 'closeComposer', 'describeScreen', 'dashboardCounts',
+  'openSms', 'selectSmsTemplate', 'fillSms', 'smsState', 'sendSms', 'openLogCall', 'fillLogCall', 'logCallState', 'saveLogCall'];
 let polling = false;
 let lastAccount = '';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -35,16 +35,44 @@ async function shellTab() {
   return null;
 }
 
+// A Momentum tab opened before this version of the extension was installed has no guard.js yet: reload it once.
+const guardReloads = {};
+async function ensureGuard(tab) {
+  const [{ result }] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, world: 'MAIN', func: () => !!window.__momentumGuard });
+  if (result || Date.now() - (guardReloads[tab.id] || 0) < 600000) return tab;
+  guardReloads[tab.id] = Date.now();
+  await chrome.tabs.reload(tab.id);
+  await sleep(500);
+  await waitComplete(tab.id).catch(() => {});
+  for (let i = 0; i < 40; i++) { const t = await shellTab(); if (t) return t; await sleep(500); }
+  return tab;
+}
+
 async function callAgent(fn, args) {
   if (!AGENT_FUNCTIONS.includes(fn)) throw new Error('Unknown action');
-  const tab = await shellTab();
+  let tab = await shellTab();
   if (!tab) throw new Error('No signed-in Momentum tab is open in this browser. Open Momentum and sign in, then try again.');
+  if (fn === 'ping' || fn === 'openLead' || fn === 'readLead') tab = await ensureGuard(tab);
   await chrome.scripting.executeScript({ target: { tabId: tab.id }, world: 'MAIN', files: ['agent.js'] });
   const [{ result }] = await chrome.scripting.executeScript({
     target: { tabId: tab.id }, world: 'MAIN', args: [fn, args || []],
     func: async (name, params) => {
-      try { const v = await window.__momentumAgent[name](...params); return { ok: true, value: v === undefined ? null : v }; }
-      catch (e) { return { ok: false, error: String(e && e.message || e) }; }
+      // While the tool works, Momentum's message boxes are recorded instead of shown (guard.js); a message while a
+      // screen opens or is filled in means Momentum does not allow this action for this lead.
+      window.__momentumAgentUntil = Date.now() + 60000;
+      const seen = window.__momentumSeen = window.__momentumSeen || [], before = seen.length;
+      try { window.__momentumAgent.arm(); } catch (e) { /* older agent */ }
+      const opening = ['openLead', 'readLead', 'openComposer', 'selectTemplate', 'fillComposer', 'openSms', 'selectSmsTemplate', 'fillSms', 'openLogCall', 'fillLogCall'];
+      try {
+        const v = await window.__momentumAgent[name](...params);
+        const said = seen.slice(before).filter(Boolean);
+        if (said.length && opening.includes(name)) return { ok: false, error: 'Momentum does not allow this on this lead: ' + said.join(' / ') };
+        return { ok: true, value: v === undefined ? null : v };
+      } catch (e) {
+        const said = seen.slice(before).filter(Boolean);
+        if (said.length && opening.includes(name)) return { ok: false, error: 'Momentum does not allow this on this lead: ' + said.join(' / ') };
+        return { ok: false, error: String(e && e.message || e) };
+      } finally { window.__momentumAgentUntil = Date.now() + 60000; }
     }
   });
   if (!result || !result.ok) throw new Error(result ? result.error : 'No answer from the Momentum page');
@@ -61,7 +89,7 @@ function waitComplete(tabId, ms = 40000) {
 }
 
 // Runs the saved report exactly like the Run button does, reads the result grid and closes the extra tabs.
-async function runReport(reportId, account) {
+async function runReport(reportId, account, sourceColumn) {
   const shell = await shellTab();
   if (!shell) throw new Error('No signed-in Momentum tab is open in this browser. Open Momentum and sign in, then try again.');
   const origin = new URL(shell.url).origin;
@@ -84,18 +112,48 @@ async function runReport(reportId, account) {
     opened.push(grid.id);
     await waitComplete(grid.id, 60000);
     const [{ result }] = await chrome.scripting.executeScript({
-      target: { tabId: grid.id }, world: 'MAIN', args: [account],
-      func: async (who) => {
+      target: { tabId: grid.id }, world: 'MAIN', args: [account, sourceColumn || ''],
+      func: async (who, wanted) => {
         const t0 = Date.now();
         while (!(window.Tabulator && Tabulator.findTable && Tabulator.findTable('.tabulator')[0] && document.querySelector('.tabulator-row'))) {
           if (Date.now() - t0 > 120000) return { ok: false, error: 'The report did not finish loading' };
           await new Promise(r => setTimeout(r, 500));
         }
-        const all = Tabulator.findTable('.tabulator')[0].getData();
+        // The grid can still be filling: read it only once its size has stopped changing.
+        let all = [], still = 0;
+        while (still < 2) {
+          if (Date.now() - t0 > 240000) return { ok: false, error: 'The report did not finish loading' };
+          const now = Tabulator.findTable('.tabulator')[0].getData();
+          still = now.length === all.length && now.length ? still + 1 : 0;
+          all = now;
+          await new Promise(r => setTimeout(r, 700));
+        }
+        // Column names only. Every column that could hold the lead source is sent; the tool decides which one is used.
+        const columns = new Set();
+        for (const r of all) for (const k in r) columns.add(k);
+        // Which contact columns the report has, and only yes or no per person: the numbers and addresses stay in Momentum.
+        const named = re => [...columns].filter(k => re.test(k.trim()));
+        const contactColumns = { cell: named(/^(cell|call|mobile)( phone)?$/i), phone: named(/^((home|work|cell|call|mobile) phone|cell|mobile|phone)$/i), email: named(/^e-?mail( address)?$/i) };
+        const has = (r, keys) => keys.some(k => /\S/.test(r[k] == null ? '' : String(r[k])));
+        const sourceColumns = [...columns].filter(k => k === wanted || /source|\bsrc\b|vendor|provider/i.test(k)).slice(0, 8);
+        // Momentum's own total, if the page shows one ("65,015 unique people"), read from outside the table rows.
+        let momentumTotal = null;
+        try {
+          const words = [];
+          const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+          for (let n; (n = walk.nextNode());) if (n.textContent.trim() && !n.parentElement.closest('.tabulator-row,script,style')) words.push(n.textContent.trim());
+          const text = words.join(' '), found = new Set();
+          for (const m of text.matchAll(/([\d,]*\d)\s+(?:total\s+)?unique\b/gi)) found.add(Number(m[1].replace(/,/g, '')));
+          if (!found.size) for (const m of text.matchAll(/unique\s+(?:people|persons?|customers?|leads?|prospects?|records?)\s*[:=(]?\s*([\d,]*\d)/gi)) found.add(Number(m[1].replace(/,/g, '')));
+          if (found.size === 1) momentumTotal = [...found][0];
+        } catch (e) { /* no total to compare with */ }
         const rows = all.filter(r => r['Sales Person 1'] === who)
           .map(r => ({ id: String(r.personid), name: r['Customer Name'], last: r['Last Contact Date'], action: r['Last Action'], created: r['Prospect Creation Date'], status: r['Sales Status'] }));
         // The counts let the tool show that its list matches the report row for row.
-        return { ok: true, value: { rows, total: all.length } };
+        // Everyone in the report, for viewing and searching only. Arrays, not objects: there are about 65,000.
+        const t = v => v == null ? '' : String(v);
+        const people = all.map(r => [t(r.personid), t(r['Customer Name']), t(r['Sales Person 1']), t(r['Last Contact Date']), t(r['Last Action']), t(r['Prospect Creation Date']), t(r['Sales Status']), sourceColumns.map(k => t(r[k])), (has(r, contactColumns.cell) ? 'c' : '') + (has(r, contactColumns.phone) ? 'p' : '') + (has(r, contactColumns.email) ? 'e' : '')]);
+        return { ok: true, value: { rows, total: all.length, people, columns: [...columns], sourceColumns, contacts: { text: contactColumns.cell.length > 0, call: contactColumns.phone.length > 0, email: contactColumns.email.length > 0 }, momentumTotal } };
       }
     });
     if (!result || !result.ok) throw new Error(result ? result.error : 'No report data');
@@ -131,7 +189,7 @@ async function handle(cmd) {
   if (cmd.name === 'reload') { setTimeout(() => chrome.runtime.reload(), 400); return true; }
   if (cmd.name === 'ping') return { shell: !!(await shellTab()) };
   if (cmd.name === 'agent') return callAgent(cmd.fn, cmd.args);
-  if (cmd.name === 'report') return runReport(cmd.reportId, cmd.account);
+  if (cmd.name === 'report') return runReport(cmd.reportId, cmd.account, cmd.sourceColumn);
   throw new Error('Unknown command');
 }
 
@@ -143,7 +201,7 @@ async function loop() {
       let { base, token } = await config();
       if (!token) { token = await hello(base); if (!token) { await sleep(3000); continue; } }
       let r;
-      try { r = await fetch(base + '/bridge/poll?token=' + encodeURIComponent(token) + '&account=' + encodeURIComponent(lastAccount)); }
+      try { r = await fetch(base + '/bridge/poll?token=' + encodeURIComponent(token) + '&account=' + encodeURIComponent(lastAccount) + '&version=' + encodeURIComponent(chrome.runtime.getManifest().version)); }
       catch (e) { await sleep(3000); continue; }
       if (r.status === 401 || r.status === 403) { await chrome.storage.local.remove('token'); await sleep(1500); continue; }
       const j = await r.json().catch(() => ({}));

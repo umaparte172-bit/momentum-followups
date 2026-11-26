@@ -26,7 +26,7 @@ def test_responsive_layout_search_and_preview(tmp_path):
             expect(page.locator(".lead")).to_have_count(30)
             page.locator(".lead").nth(0).check()
             page.locator(".lead").nth(1).check()
-            page.get_by_role("button", name="Preview messages", exact=True).click()
+            page.locator("#preview").click()
             expect(page.locator("#metric-ready")).to_have_text("2")
             expect(page.locator("#messages article")).to_have_count(2)
             for width in [1440, 1024, 768, 390, 320]:
@@ -42,11 +42,11 @@ def test_responsive_layout_search_and_preview(tmp_path):
             page.locator("#search").fill("no-matching-lead")
             expect(page.locator("#search-empty")).to_be_visible()
             page.locator("#dry").uncheck()
-            expect(page.locator("#approval-area")).to_be_visible()
-            page.locator("#approval").fill("SEND APPROVED EMAILS")
+            page.locator("#run").click()
+            expect(page.locator("#confirm-area")).to_be_visible()
             page.locator("#template").select_option("check-in")
-            expect(page.locator("#run")).to_be_disabled()
-            expect(page.locator("#approval")).to_have_value("")
+            expect(page.locator("#confirm-area")).to_be_hidden()  # a changed message needs a fresh confirmation
+            expect(page.locator("#run")).to_be_enabled()  # sending without a preview is allowed
             assert errors == []
             browser.close()
     finally:
