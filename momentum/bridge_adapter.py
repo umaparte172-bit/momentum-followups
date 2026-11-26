@@ -216,6 +216,9 @@ class MomentumBridge(MomentumUDC):
                     and state["result"] == str(self.config["call_result_id"]) and digits(state["phone"]) == digits(lead["to"]))
         if not expected:
             raise LeadExcluded("The Log Call panel did not take the chosen values", lead)
+        if not (state.get("note") or "").strip() or squash(state["note"]) != squash(self.config.get("call_note", "")):
+            # Momentum saves nothing without Call Notes, so a missing note is caught here, before Save.
+            raise LeadExcluded("The Log Call panel did not take the call note (Momentum requires one)", lead)
         return {**lead, "subject": "Call log: " + state["resultText"], "body": state["note"],
                 "call_result_name": state["resultText"]}
 

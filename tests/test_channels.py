@@ -178,7 +178,7 @@ def test_email_text_and_call_for_one_lead_do_not_block_each_other(tmp_path):
     owner = "owner-mixed-00000000"
     try:
         app.load(owner)
-        assert run(app, owner, ["1"], "call", call={"type": "1074", "result": "1052", "note": ""}, test=True)[1]["One"]["status"] == "sent"
+        assert run(app, owner, ["1"], "call", call={"type": "1074", "result": "1052", "note": "Talked to them"}, test=True)[1]["One"]["status"] == "sent"
         # The call itself is now contact in the last 72 hours, so the text is skipped for that reason, not as a duplicate.
         preview = app.preview(owner, ["1"], "5430", "text")
         assert "Contacted within the last 72 hours" in preview["messages"][0]["exclusion"]

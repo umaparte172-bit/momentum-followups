@@ -218,6 +218,24 @@ def test_a_dry_run_without_a_preview_sends_nothing(tmp_path):
         app.ledger.close()
 
 
+def test_a_call_batch_without_a_note_is_refused_before_anything_is_opened(tmp_path):
+    # Found live: Momentum's Log Call panel requires Call Notes and silently saves nothing without them.
+    browser = start(tmp_path, {"1": phone_lead("One", "a@example.test")})
+    app = live_app(tmp_path)
+    try:
+        app.load(OWNER)
+        opened = list(browser.calls)
+        for note in ("", "   "):
+            with pytest.raises(ValueError, match="Momentum requires Call notes"):
+                app.run(OWNER, {"direct": True, "ids": ["1"], "channel": "call", "call": {**CALL, "note": note}})
+            with pytest.raises(ValueError, match="Momentum requires Call notes"):
+                app.preview(OWNER, ["1"], None, "call", {**CALL, "note": note})
+        assert browser.calls == opened
+    finally:
+        browser.running = False
+        app.ledger.close()
+
+
 def test_one_slow_lead_page_does_not_fail_the_sync(tmp_path):
     browser = start(tmp_path, {"1": phone_lead("Slow", "a@example.test"), "2": phone_lead("Fine", "b@example.test", cell="(310)555-0102")})
     original = browser.handle

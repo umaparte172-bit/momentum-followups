@@ -76,10 +76,15 @@ class RealisticMomentum(MockMomentum):
             self.record_body(cid, "text", "", form["emailBody"])
             self.record(cid, "Text Message (SMS) Outbound", "Template: " + form["template_name"] if form["template_name"] != "-" else form["emailBody"])
             return done
+        refused = ""
         if url.path == "/call" and request.method == "POST":
             time.sleep(1.5)  # Momentum takes its time to save
-            self.record_body(cid, "call", form["logCallView.contactedPhone"], form["logCallView.note"])
-            self.record(cid, "Outbound Call " + form["logCallView.contactedPhone"], form["logCallView.note"], SENDER + " [ Left Message ]")
+            if not form["logCallView.note"].strip() or lead.get("refuse_save"):
+                # As the real Momentum does: Call Notes are required, and a refused save comes back as a line of text, no message box.
+                refused = "<p>Please fill out the form completely.</p>"
+            else:
+                self.record_body(cid, "call", form["logCallView.contactedPhone"], form["logCallView.note"])
+                self.record(cid, "Outbound Call " + form["logCallView.contactedPhone"], form["logCallView.note"], SENDER + " [ Left Message ]")
         if url.path == "/call":  # like Momentum, after a save the panel comes back as a fresh Log Call form
             phones = "".join(f"<option value='{p}'>{p}</option>" for p in (lead["cell"], lead["home"]) if p)
             # Like Momentum, saving a call for a number on the do-not-call list asks first.
@@ -88,7 +93,7 @@ class RealisticMomentum(MockMomentum):
             # Like a modern page, odd-numbered leads save in the background and the panel stays as it is.
             ajax = ("var x=new XMLHttpRequest();x.open('POST',this.action);x.setRequestHeader('Content-Type','application/x-www-form-urlencoded');"
                     "x.send(new URLSearchParams(new FormData(this)).toString());return false;") if int(cid) % 2 else ""
-            return (f"<form method=post action='/call?cid={cid}' onsubmit=\"{ask}{ajax}\"><select name=logCallView.incoming><option value=true>in<option value=false>out</select><input type=checkbox name=logCallView.isVideoCall>"
+            return (f"{refused}<form method=post action='/call?cid={cid}' onsubmit=\"{ask}{ajax}\"><select name=logCallView.incoming><option value=true>in<option value=false>out</select><input type=checkbox name=logCallView.isVideoCall>"
                     "<select name=logCallView.callTypeID><option value=1074>Owner Follow Up</select>"
                     f"<select name=logCallView.contactedPhone {warn}>{phones}</select><select name=logCallView.callResultID><option value=''>-<option value=1062>Left Message</select>"
                     "<textarea name=logCallView.note></textarea><button type=submit>Save</button></form>")
@@ -312,14 +317,25 @@ def test_a_long_call_batch_goes_on_past_a_lead_that_will_not_open(day):
     page, state, crm, restart, errors = day
     crm.leads["7"]["broken"] = True
     crm.leads["12"]["call"] = "preferred call dont"
+    crm.leads["8"]["refuse_save"] = True  # Momentum refuses this save with a line of text in the panel, not a message box
     until(page, "!remoteBusy&&!localBusy", 60)
     page.locator("#all").check()
     page.locator("#channel").select_option("call")
     page.locator("#call-result").select_option("1062")
+    # Momentum saves nothing without Call Notes: the tool will not start without one.
+    page.locator("#dry").set_checked(False)
+    until(page, "!document.querySelector('#run').disabled", 30)
+    page.locator("#run").click()
+    page.locator("#confirm-yes").click()
+    until(page, "!localBusy", 30)
+    assert "Momentum requires Call notes" in page.locator("#error").inner_text()
+    assert not crm.posted
+    page.locator("#call-note").fill("Left a voicemail")
     send(page, "Log up to 22 call logs now")
     rows = finish(page, 400)
     status = {i: s for i, (s, _) in rows.items()}
-    assert status == {**{str(i): "sent" for i in range(1, 23)}, "7": "failed", "12": "skipped"}, status
+    assert status == {**{str(i): "sent" for i in range(1, 23)}, "7": "failed", "8": "skipped", "12": "skipped"}, status
     assert "lead page" in rows["7"][1]
-    assert len([c for c, w, _, _ in crm.posted if w == "call"]) == 20
+    assert "Please fill out the form completely" in rows["8"][1]
+    assert len([c for c, w, _, _ in crm.posted if w == "call"]) == 19
     assert state["app"].snapshot()["error"] is None and errors == []

@@ -9,7 +9,7 @@ This is a small tool that works your follow-up list for you, one lead at a time,
 - Pulls the **FR - No Contact > 72 Hours** report. **My leads** are the ones where you're Sales Person 1, and the only ones that can be emailed, texted or logged. **Full report** shows everyone in it, to view and search only, with filters for one or several lead sources; it is kept in memory and is gone when the tool stops.
 - Shows each lead with how long ago it was created and last contacted, newest first.
 - Shows that the list matches the report: the number of leads, the report rows for you, and the rows in the whole report.
-- Three actions: **Send email** (saved email template), **Send text** (saved text template, to the lead's cell) and **Log call** (call type, result and notes). Emails and texts can use your own message with placeholders such as `{customer_first_name}`, and can be saved as your own templates. Preview is optional.
+- Three actions: **Send email** (saved email template), **Send text** (saved text template, to the lead's cell) and **Log call** (call type, result and a call note, which Momentum requires). Emails and texts can use your own message with placeholders such as `{customer_first_name}`, and can be saved as your own templates. Preview is optional.
 - Rechecks each lead right before acting, and skips it if anything has changed.
 - Keeps a permanent record of what's been done, so the same action never happens twice for a lead, even after a restart.
 - Queues the whole selection with no hourly, daily or batch-size cap of its own, a few seconds apart (`"enforce_limits": true` brings caps back).

@@ -224,7 +224,7 @@ def act(page, ids, channel="email", dry=False, test=False, preview=True):
 def test_the_clients_exact_steps_send_through_the_real_extension(desk):
     page, app, crm = desk
     assert page.locator(".lead").count() == 8  # every report row for this account, none of anybody else's
-    assert page.locator("#bridge-old").is_hidden() and "extension 1.15.1" in page.locator("#build").inner_text()
+    assert page.locator("#bridge-old").is_hidden() and "extension 1.15.2" in page.locator("#build").inner_text()
     assert act(page, ["1"], dry=True) == {"1": "dry-run"} and crm.sent == []
     # No single test first, and no preview needed: straight from the selection to the batch.
     assert act(page, ["1"], preview=False) == {"1": "sent"} and crm.sent == [("1", "Email Outbound")]

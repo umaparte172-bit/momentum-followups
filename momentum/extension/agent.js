@@ -1,7 +1,7 @@
 // Momentum Bridge: page agent. Runs inside the signed-in Momentum tab (page context) and only exposes a fixed set of
 // read and compose actions. Nothing here accepts arbitrary code from the local server.
 (() => {
-  const VERSION = 15;
+  const VERSION = 16;
   if (window.__momentumAgent && window.__momentumAgent.version === VERSION) return;
   // Chrome throttles timers in tabs that have been hidden for a while (to about one tick a minute), which would make
   // every wait crawl. While the tab is hidden, wait by yielding to the event loop instead of using timers.
@@ -372,6 +372,14 @@
           || (!net.started && Date.now() - t0 > 3000) || Date.now() - t0 > 15000, 30000, 'the call log to save');
       } finally { net.stop(); }
       if (seen.length) throw new Error('Momentum said: ' + seen.join(' / '));
+      // Momentum answers a refused save (for example no Call Notes) by reloading the panel with a line of text,
+      // not with a message box: report its words so the lead is skipped at once instead of stopping the batch.
+      let again = null;
+      try { again = logCallDoc(); } catch (e) { /* panel gone */ }
+      if (again && again !== c) {
+        const said = [...again.querySelectorAll('p')].map(p => clean(p.textContent)).filter(Boolean).join(' / ');
+        if (said) throw new Error('Momentum said: ' + said);
+      }
       return true;
     },
     // Today's counts from the home page's Sales Statistics (for example "Outbound Emails / SMS").

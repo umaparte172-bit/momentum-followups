@@ -173,7 +173,10 @@ class Application:
                 raise ValueError("Momentum's Log Call choices could not be read. Sync the report again")
             if call.get("type") not in types or call.get("result") not in results:
                 raise ValueError("Choose a call type and a call result")
-            note = call.get("note") if isinstance(call.get("note"), str) else ""
+            note = (call.get("note") if isinstance(call.get("note"), str) else "").strip()
+            if not note:
+                # Momentum's Log Call panel requires Call Notes: without one it saves nothing ("Please fill out the form completely").
+                raise ValueError("Type a call note first: Momentum requires Call notes and saves nothing without them")
             template, name = "call:" + call["result"], "Call log: " + results[call["result"]]
             extra = {"call_type_id": call["type"], "call_result_id": call["result"], "call_result_name": results[call["result"]], "call_note": note[:2000]}
         elif template == "custom" or custom:

@@ -175,3 +175,9 @@ The tool's counters only measure its own sending. They can't see what other peop
 ## Counts on the buttons (0.12.1)
 
 My leads and Full report show their counts, and the totals panel shows both, so 491 is no longer mistaken for the whole report.
+- **Live, build 0.15.2 / extension 1.15.2 (2026-11-26, Los Angeles time), Dry run off, approved by the account owner:**
+  - *The trip, found live:* a real 20-lead call batch on 0.15.1 with the Call notes box empty stopped on its first lead as "uncertain". Momentum's Log Call panel requires Call Notes: without them it saves nothing and reloads the panel with "Please fill out the form completely.", with no message box. That lead's Contact History was checked: nothing saved.
+  - *Fix:* the dashboard requires a call note before it starts; the tool checks that the note is in the panel before Save; if Momentum ever answers a save with a line of text, the extension reports Momentum's words, that lead is skipped and the batch goes on.
+  - *Read-only, no Save:* the real Log Call panel opened and filled for 113 leads in 442 s: all 98 text opt-outs ready, the do-not-call lead skipped, the lead with a do-not-call cell switched to the home number, 5 with no phone skipped without opening.
+  - *Real batch, same 20 leads, with a note:* 126 s (about 7 s a call log), 18 logged and each confirmed in Contact History, 2 skipped (do-not-call; no phone), nothing uncertain. The do-not-call-cell lead was logged on the home number.
+  - 141 tests pass (browser tests run with and without guard.js).

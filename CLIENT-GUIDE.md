@@ -24,7 +24,7 @@ There is no test step any more. Start with Dry run on to see what would happen, 
 
 1. Click **Sync report**. It loads your leads from the *FR - No Contact > 72 Hours* report; **Full report** lets you view and search everyone in it and filter by lead source.
 2. Tick the leads. Under **Action**, choose **Send email**, **Send text** or **Log call**.
-3. For email and text, choose a saved Momentum template, one of **My templates**, or **Write my own message** (see below). For a call, pick the call type and result, and type notes if you like.
+3. For email and text, choose a saved Momentum template, one of **My templates**, or **Write my own message** (see below). For a call, pick the call type and result, and type a call note (Momentum requires one: without it, it saves nothing).
 4. Optional: click **Preview** to see each personalized message and who will be skipped.
 5. Turn **Dry run** off, click **Send** (or **Log … call logs now**), then **Yes, do it now**. Each lead's Contact History shows the new entry (*Email Outbound*, *Text Message (SMS) Outbound*, or *Outbound Call*) under your name.
 
