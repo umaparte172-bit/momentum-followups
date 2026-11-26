@@ -197,6 +197,10 @@ def send(page, label_start):
     assert page.locator("#run").inner_text().strip().startswith(label_start), page.locator("#run").inner_text()
     page.locator("#run").click()
     assert page.locator("#confirm-area").is_visible()
+    if page.locator("#channel").input_value() == "call":
+        # The person sees exactly what every call log will say before anything is saved.
+        note = page.locator("#call-note").input_value().strip()
+        assert f'"Owner Follow Up / Left Message" with the note "{note}"' in page.locator("#confirm-text").inner_text()
     page.locator("#confirm-yes").click()
     until(page, "!localBusy", 30)
     assert page.locator("#error").inner_text() == "", page.locator("#error").inner_text()

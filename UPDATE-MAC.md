@@ -44,9 +44,9 @@ In the dashboard, click **Sign in to CRM**. Scroll to the bottom of the page: it
 ## 6. Try it
 
 1. Click **Sync report**.
-2. Tick a few leads. Action: **Log call**. Pick the call type and result. Leave **Dry run** on and click **Dry run: … call logs**. The Activity log shows who would be logged and who is skipped (do-not-call, for example). Nothing is saved.
+2. Tick a few leads. Action: **Log call**. Pick the call type and result, and type a **call note** (Momentum requires one, for example *Left a voicemail*). Leave **Dry run** on and click **Dry run: … call logs**. The Activity log shows who would be logged and who is skipped (do-not-call, for example). Nothing is saved.
 3. Action **Send text**, message **Write my own message**: type `Hi {customer_first_name}, ...` and click **Preview**. Each person's name is filled in.
-4. For real: turn **Dry run** off, click **Send** (or **Log … call logs now**), then **Yes, do it now**. Start with one lead you are happy to contact, and check its Contact History in Momentum.
+4. For real: turn **Dry run** off, click **Send** (or **Log … call logs now**). The yellow box says exactly what will be saved (for a call: type, result and note); if it's right, click **Yes, do it now**. Start with 3 to 5 leads, and check their Contact History in Momentum. Each call log takes about 7 seconds; a lead that is skipped says why, and the batch carries on.
 
 There is no single test step any more, and Preview is optional.
 
