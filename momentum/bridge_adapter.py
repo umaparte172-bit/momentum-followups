@@ -12,6 +12,10 @@ class MomentumRefused(RuntimeError):
     """Momentum answered the click with a message and no Contact History entry appeared: nothing was saved or sent."""
 
 
+class NotSent(RuntimeError):
+    """Something went wrong before the Send or Save click: nothing was sent, so the lead may be tried again."""
+
+
 class MomentumBridge(MomentumUDC):
     """Same eligibility and safety logic as the Playwright adapter, but every browser action happens in the Momentum
     tab that is already signed in in the user's own browser, through the Momentum Bridge extension."""
@@ -158,6 +162,12 @@ class MomentumBridge(MomentumUDC):
             return {"to": None, "phone_opt_out": None}
         return {"to": chosen["phone"], "phone_opt_out": opt_out(chosen)}
 
+    def recheck(self, attempt):
+        """Looks once more, later, for the Contact History entry of a click that could not be confirmed at the time.
+        The entry is matched by its own time (within minutes of the click), so a late look still finds only that one."""
+        self.history_before, self.send_started = attempt["before"], attempt["started"]
+        return self._new_email_entry(self.bridge.agent("readLead", str(attempt["message"]["id"]))["history"], attempt["message"])
+
     def _open(self, fn, lead, *args):
         """Opens or fills an action screen. A refusal or message by Momentum itself is that lead's skip reason, not a failure."""
         try:
@@ -250,17 +260,24 @@ class MomentumBridge(MomentumUDC):
     def send(self, message):
         if self.config.get("mode") != "live":
             raise RuntimeError("Live sending needs live mode")
-        self.account()
         channel = message.get("channel", "email")
-        if channel == "text":
-            current = self._validate_sms(message, self.bridge.agent("smsState"))
-        elif channel == "call":
-            current = self._validate_call(message, self.bridge.agent("logCallState"))
-        else:
-            current = self._composer(message)
+        # Everything up to the click: a problem here means nothing was sent, so the lead may simply be tried again.
+        try:
+            self.account()
+            if channel == "text":
+                current = self._validate_sms(message, self.bridge.agent("smsState"))
+            elif channel == "call":
+                current = self._validate_call(message, self.bridge.agent("logCallState"))
+            else:
+                current = self._composer(message)
+        except LeadExcluded:
+            raise
+        except Exception as exc:
+            raise NotSent(str(exc)) from exc
         if fingerprint({**current, "channel": channel}) != fingerprint(message):
-            raise RuntimeError("Composer changed immediately before send")
+            raise NotSent("The window changed just before sending; nothing was sent")
         self.send_started = datetime.now(self.zone)
+        self.last_attempt = {"message": message, "started": self.send_started, "before": list(self.history_before)}
         problem = None
         refused = None
         try:
@@ -272,7 +289,10 @@ class MomentumBridge(MomentumUDC):
                 problem = exc  # a slow window is not a failed send: Contact History decides
         deadline = time.monotonic() + (12 if refused else 25)
         while time.monotonic() < deadline:
-            found = self._new_email_entry(self.bridge.agent("readLead", str(message["id"]))["history"], message)
+            try:
+                found = self._new_email_entry(self.bridge.agent("readLead", str(message["id"]))["history"], message)
+            except Exception:
+                found = None  # a slow lead page is not an answer: keep looking until the deadline
             if found:
                 return found
             time.sleep(1)

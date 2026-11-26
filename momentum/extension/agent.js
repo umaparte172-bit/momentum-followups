@@ -1,7 +1,7 @@
 // Momentum Bridge: page agent. Runs inside the signed-in Momentum tab (page context) and only exposes a fixed set of
 // read and compose actions. Nothing here accepts arbitrary code from the local server.
 (() => {
-  const VERSION = 16;
+  const VERSION = 18;
   if (window.__momentumAgent && window.__momentumAgent.version === VERSION) return;
   // Chrome throttles timers in tabs that have been hidden for a while (to about one tick a minute), which would make
   // every wait crawl. While the tab is hidden, wait by yielding to the event loop instead of using timers.
@@ -372,13 +372,16 @@
           || (!net.started && Date.now() - t0 > 3000) || Date.now() - t0 > 15000, 30000, 'the call log to save');
       } finally { net.stop(); }
       if (seen.length) throw new Error('Momentum said: ' + seen.join(' / '));
-      // Momentum answers a refused save (for example no Call Notes) by reloading the panel with a line of text,
-      // not with a message box: report its words so the lead is skipped at once instead of stopping the batch.
+      // Momentum answers a save by reloading the panel with a line of text, not a message box: "Call Logged." when it
+      // was saved, or a reason (for example "Please fill out the form completely.") when it was not. Only a reason is a
+      // refusal; anything unclear is left to Contact History, so a saved call is never taken for a refused one.
       let again = null;
       try { again = logCallDoc(); } catch (e) { /* panel gone */ }
       if (again && again !== c) {
         const said = [...again.querySelectorAll('p')].map(p => clean(p.textContent)).filter(Boolean).join(' / ');
-        if (said) throw new Error('Momentum said: ' + said);
+        if (said && !/logged|saved|success/i.test(said) && /fill out|required|complete|invalid|not allowed|cannot|can't|unable|error/i.test(said)) {
+          throw new Error('Momentum said: ' + said);
+        }
       }
       return true;
     },

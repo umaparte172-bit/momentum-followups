@@ -1,4 +1,4 @@
-# Update your Mac to build 0.15.2
+# Update your Mac to build 0.16.0
 
 About 10 minutes. Your settings and send history are kept (they live in `~/.momentum-followups`, not in the tool's folder). Yes, you do need to reload the Chrome extension: step 4.
 
@@ -8,11 +8,11 @@ In the Terminal window where the tool is running, press **Ctrl+C**. Close the ol
 
 ## 2. Unzip the new build
 
-Unzip `momentum-followups-0.15.2.zip`. Don't copy it over the old folder; just use the new folder from now on.
+Unzip `momentum-followups-0.16.0.zip`. Don't copy it over the old folder; just use the new folder from now on.
 
 ## 3. Install it
 
-Open Terminal, type `cd ` (with a space), drag the new `momentum-followups-0.15.2` folder into the window, press Return, then run:
+Open Terminal, type `cd ` (with a space), drag the new `momentum-followups-0.16.0` folder into the window, press Return, then run:
 
 ```
 bash setup-macos.sh
@@ -20,14 +20,14 @@ bash setup-macos.sh
 
 It must end with:
 
-> Installed build 0.15.2 with Momentum Bridge 1.15.2
+> Installed build 0.16.0 with Momentum Bridge 1.16.1
 
 and, above that, *Configuration is ready for live sending.* If it asks for your Momentum address and name instead, your old settings could not send; type them and it makes new ones (the old file is kept as a backup).
 
 ## 4. Reload the extension in Chrome
 
 1. Open `chrome://extensions`.
-2. On **Momentum Bridge**, click the round reload arrow. It must say **1.15.2**.
+2. On **Momentum Bridge**, click the round reload arrow. It must say **1.16.1**.
 3. Still an older number? Click **Remove**, then **Load unpacked** and choose the `MomentumBridge-extension` folder in your home folder.
 4. Reload your Momentum tab (Cmd+R).
 
@@ -39,7 +39,7 @@ In the same Terminal window:
 bash start-macos.command
 ```
 
-In the dashboard, click **Sign in to CRM**. Scroll to the bottom of the page: it must say **Build 0.15.2 · extension 1.15.2**. If a yellow bar says Chrome is running an old Momentum Bridge, click **Reload extension** in it, or repeat step 4.
+In the dashboard, click **Sign in to CRM**. Scroll to the bottom of the page: it must say **Build 0.16.0 · extension 1.16.1**. If a yellow bar says Chrome is running an old Momentum Bridge, click **Reload extension** in it, or repeat step 4.
 
 ## 6. Try it
 

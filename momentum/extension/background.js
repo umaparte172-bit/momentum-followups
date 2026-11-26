@@ -52,6 +52,8 @@ async function callAgent(fn, args) {
   if (!AGENT_FUNCTIONS.includes(fn)) throw new Error('Unknown action');
   let tab = await shellTab();
   if (!tab) throw new Error('No signed-in Momentum tab is open in this browser. Open Momentum and sign in, then try again.');
+  // Chrome's Memory Saver may put a background tab to sleep in the middle of a long batch: never this one.
+  if (tab.autoDiscardable !== false) { try { await chrome.tabs.update(tab.id, { autoDiscardable: false }); } catch (e) { /* older Chrome */ } }
   if (fn === 'ping' || fn === 'openLead' || fn === 'readLead') tab = await ensureGuard(tab);
   await chrome.scripting.executeScript({ target: { tabId: tab.id }, world: 'MAIN', files: ['agent.js'] });
   const [{ result }] = await chrome.scripting.executeScript({

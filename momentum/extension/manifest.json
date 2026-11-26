@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Momentum Bridge",
-  "version": "1.15.2",
+  "version": "1.16.1",
   "description": "Lets the local Momentum follow-up tool use the Momentum CRM tab that is already signed in, so no second login is needed.",
   "permissions": [
     "tabs",

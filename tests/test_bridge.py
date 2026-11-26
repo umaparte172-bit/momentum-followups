@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from momentum.bridge import Bridge, BridgeError, get_bridge
+from momentum.bridge import Bridge, BridgeError, expected_version, get_bridge
 from momentum.bridge_adapter import MomentumBridge
 from momentum.server import create_server
 from momentum.service import Application
@@ -38,7 +38,7 @@ class FakeBrowser(threading.Thread):
 
     def run(self):
         while self.running:
-            cmd = self.bridge.poll(EXT, self.token, ACCOUNT, timeout=0.2)
+            cmd = self.bridge.poll(EXT, self.token, ACCOUNT, timeout=0.2, version=expected_version())  # the extension as shipped with this build
             if not cmd:
                 continue
             try:
@@ -255,7 +255,7 @@ def test_adapter_send_requires_unchanged_content_then_verifies_history(tmp_path)
             crm.leads()
             message = crm.inspect("111")
             changed = {**message, "body": message["body"] + " edited"}
-            with pytest.raises(RuntimeError, match="changed immediately"):
+            with pytest.raises(RuntimeError, match="changed just before sending; nothing was sent"):
                 crm.send(changed)
             assert browser.sent == []
             entry = crm.send(message)

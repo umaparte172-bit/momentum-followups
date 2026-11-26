@@ -11,7 +11,7 @@ from pathlib import Path
 from . import VERSION
 from .adapters import adapter, live_adapter, playwright_adapter, Momentum
 from .bridge import get_bridge
-from .bridge_adapter import MomentumRefused
+from .bridge_adapter import MomentumRefused, NotSent
 from .full_report import FullReport
 from .core import CHANNELS, LeadExcluded, Ledger, eligible, required_owner, fingerprint, placeholders, send_key
 
@@ -322,6 +322,12 @@ class Application:
         self._enter_operation()
         handed_off = False
         try:
+            status = self.bridge.status()
+            if not data.get("dry_run") and self.config.get("connection") in ("bridge", "both") and status["outdated"]:
+                # An old extension next to a new tool is how a client ended up with the old, slow call log that stopped batches.
+                raise ValueError(f"Chrome is still running an old Momentum Bridge ({status['version'] or 'older than 1.8.0'}); "
+                                 f"this build needs {status['expected_version']}. Click Reload extension at the top of the page "
+                                 f"(or the reload arrow on Momentum Bridge in chrome://extensions), then try again. Nothing was sent.")
             if data.get("direct") is True:
                 # Send without a preview: every person is checked once, right before their own action, and skipped if anything is wrong.
                 preview = self._direct(owner, data)
@@ -380,8 +386,10 @@ class Application:
     def _run(self, batch, messages, config, dry, test):
         try:
             with self.factory(config) as crm:
-                failures = waits = 0
-                for original in messages:
+                failures = waits = unsure = 0
+                queue, retried, attempts = list(messages), set(), {}
+                while queue:
+                    original = queue.pop(0)
                     while self.pause.is_set() and not self.stop.wait(.1):
                         pass
                     if self.stop.is_set():
@@ -447,37 +455,73 @@ class Application:
                             self.ledger.outcome(batch, original["id"], "dry-run", "Dry run: lead rechecked and ready, nothing sent. Turn off Dry run to do it for real.")
                         elif self.ledger.reserve(current, batch, config):
                             reserved = True
-                            detail = crm.send(current)
+                            try:
+                                detail = crm.send(current)
+                            except (NotSent, LeadExcluded):
+                                # Nothing was clicked: withdraw the reservation, so the lead is free to be done again.
+                                self.ledger.release(send_key(current)[0])
+                                reserved = False
+                                raise
                             self.ledger.finish(send_key(current)[0], "sent", detail)
                             self.ledger.outcome(batch, original["id"], "sent", detail)
                             if test:
                                 self.ledger.set_meta(self.verification(config["channel"]), detail)
                         else:
                             self.ledger.outcome(batch, original["id"], "skipped", "Duplicate reservation blocked")
+                    except LeadExcluded as exc:
+                        self.ledger.outcome(batch, original["id"], "skipped", exc.reason)
                     except MomentumRefused as exc:
                         # Momentum answered with a message and nothing appeared in Contact History: skip this one, go on.
                         self.ledger.release(send_key(current)[0])
                         self.ledger.outcome(batch, original["id"], "skipped", "Momentum did not allow it: " + str(exc))
                         failures = 0
                     except Exception as exc:
-                        self.ledger.outcome(batch, original["id"], "uncertain" if reserved else "failed", str(exc))
-                        if reserved and test:
-                            # If a person confirms this one in Contact History, it counts as the authorized test.
-                            self.ledger.set_meta("test-of:" + send_key(current)[0], self.verification(config["channel"]))
+                        if reserved:
+                            # Clicked, but no Contact History entry could be confirmed yet. That lead stays blocked (never
+                            # done twice) and is looked at again at the end; the batch goes on with the others.
+                            self.ledger.outcome(batch, original["id"], "uncertain", str(exc))
+                            if test:
+                                # If a person confirms this one in Contact History, it counts as the authorized test.
+                                self.ledger.set_meta("test-of:" + send_key(current)[0], self.verification(config["channel"]))
+                            if getattr(crm, "last_attempt", None):
+                                attempts[original["id"]] = (send_key(current)[0], crm.last_attempt, short_error(exc))
+                            unsure, failures = unsure + 1, 0
+                            if unsure >= MAX_FAILURES_IN_A_ROW:
+                                # Several in a row means Momentum itself is not saving: stop rather than keep clicking.
+                                self.error = "Momentum did not confirm several actions in a row; check Contact History. " + short_error(exc)
+                                self.stop.set()
+                            continue
+                        # Nothing was clicked for this lead. It gets one more try at the end of the batch.
+                        if original["id"] not in retried and not self.stop.is_set():
+                            retried.add(original["id"])
+                            queue.append(original)
+                            self.ledger.outcome(batch, original["id"], "pending", "Will try again at the end: " + short_error(exc))
+                        else:
+                            self.ledger.outcome(batch, original["id"], "failed", str(exc))
                         failures += 1
-                        # After a click the outcome is unknown, so the queue stops for a person to check. Before a click,
-                        # one failed lead is recorded and the queue moves on, unless Momentum stops answering altogether.
-                        if not reserved and failures >= MAX_FAILURES_IN_A_ROW and len(messages) > 15 and waits < 10 and not self.stop.is_set():
-                            # A long run survives a short outage: wait, then go on with the next lead.
+                        if failures >= MAX_FAILURES_IN_A_ROW and waits < 10 and not self.stop.is_set():
+                            # Momentum (or the connection to it) stopped answering: wait, then go on. Nothing is lost.
                             waits, failures = waits + 1, 0
                             self.job = f"Momentum is not answering; trying again in {OUTAGE_WAIT} seconds ({waits} of 10)"
                             self.stop.wait(OUTAGE_WAIT)
                             self.job = "Running batch"
-                        if reserved or failures >= MAX_FAILURES_IN_A_ROW:
+                        elif failures >= MAX_FAILURES_IN_A_ROW:
                             self.error = short_error(exc)
                             self.stop.set()
                     else:
-                        failures = waits = 0
+                        failures = waits = unsure = 0
+                # A click that could not be confirmed at the time is looked up once more, now that Momentum had time.
+                for lead_id, (key, attempt, first) in attempts.items():
+                    try:
+                        found = crm.recheck(attempt)
+                    except Exception:
+                        found = None
+                    if found:
+                        self.ledger.finish(key, "sent", found)
+                        self.ledger.outcome(batch, lead_id, "sent", found)
+                    else:
+                        self.ledger.outcome(batch, lead_id, "uncertain", "Saved or not could not be confirmed, even when checked again at the end. "
+                                            "Look at this lead's Contact History, then use Resolve an uncertain send. What happened: " + first)
         except Exception as exc:
             self.error = short_error(exc)
             for row in self.ledger.results(batch):

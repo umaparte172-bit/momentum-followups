@@ -153,7 +153,8 @@ def test_a_long_run_waits_out_a_short_outage(tmp_path, monkeypatch):
         down["left"] = 5
         app.run(OWNER, {"preview_id": p["id"], "dry_run": True})
         app.worker.join(60)
-        assert app.snapshot()["error"] is None and app.snapshot()["result_counts"] == {"failed": 5, "dry-run": 25}
+        # The 5 leads that could not be opened during the outage are tried again at the end, and nothing is lost.
+        assert app.snapshot()["error"] is None and app.snapshot()["result_counts"] == {"dry-run": 30}
     finally:
         browser.running = False
         app.ledger.close()

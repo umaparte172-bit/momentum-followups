@@ -41,7 +41,9 @@ class RealisticMomentum(MockMomentum):
         cid = query.get("cid", "")
         lead = self.leads.get(cid)
         done = "<script>top.closeDialog()</script>"
-        if url.path.endswith("/customer") and lead.get("broken"):
+        if url.path.endswith("/customer") and (lead.get("broken") or lead.get("flaky", 0) > 0):
+            if lead.get("flaky"):
+                lead["flaky"] -= 1  # fails this many times, then opens normally
             return "<!doctype html><p>An error occurred. Please try again.</p>"
         if url.path.endswith("/customer"):
             home = (f"<div class=input-item><input id='custView.homePhone.phone' value='{lead['home']}'><button class='{lead['home_call']}'>c</button></div>"
@@ -83,8 +85,15 @@ class RealisticMomentum(MockMomentum):
                 # As the real Momentum does: Call Notes are required, and a refused save comes back as a line of text, no message box.
                 refused = "<p>Please fill out the form completely.</p>"
             else:
+                refused = "<p>Call Logged.</p>"  # what the real Momentum shows after a successful save (seen live)
                 self.record_body(cid, "call", form["logCallView.contactedPhone"], form["logCallView.note"])
-                self.record(cid, "Outbound Call " + form["logCallView.contactedPhone"], form["logCallView.note"], SENDER + " [ Left Message ]")
+                if lead.get("late_history"):
+                    # Saved now, but Momentum shows it in Contact History only later (longer than the tool waits).
+                    stamp = datetime.now(LA).strftime("%m/%d/%Y %I:%M %p")
+                    row = (stamp, "Outbound Call " + form["logCallView.contactedPhone"], SENDER + " [ Left Message ]", form["logCallView.note"])
+                    threading.Timer(lead["late_history"], lambda: lead["rows"].append(row)).start()
+                else:
+                    self.record(cid, "Outbound Call " + form["logCallView.contactedPhone"], form["logCallView.note"], SENDER + " [ Left Message ]")
         if url.path == "/call":  # like Momentum, after a save the panel comes back as a fresh Log Call form
             phones = "".join(f"<option value='{p}'>{p}</option>" for p in (lead["cell"], lead["home"]) if p)
             # Like Momentum, saving a call for a number on the do-not-call list asks first.
@@ -322,6 +331,8 @@ def test_a_long_call_batch_goes_on_past_a_lead_that_will_not_open(day):
     crm.leads["7"]["broken"] = True
     crm.leads["12"]["call"] = "preferred call dont"
     crm.leads["8"]["refuse_save"] = True  # Momentum refuses this save with a line of text in the panel, not a message box
+    crm.leads["3"]["flaky"] = 1  # this lead page fails once, then opens: it is tried again at the end
+    crm.leads["4"]["late_history"] = 30  # saved, but shown in Contact History only after the tool has stopped waiting
     until(page, "!remoteBusy&&!localBusy", 60)
     page.locator("#all").check()
     page.locator("#channel").select_option("call")
@@ -338,8 +349,11 @@ def test_a_long_call_batch_goes_on_past_a_lead_that_will_not_open(day):
     send(page, "Log up to 22 call logs now")
     rows = finish(page, 400)
     status = {i: s for i, (s, _) in rows.items()}
+    # Nothing stops the batch midway: every other lead is logged, the late one is confirmed when checked again at the end.
     assert status == {**{str(i): "sent" for i in range(1, 23)}, "7": "failed", "8": "skipped", "12": "skipped"}, status
     assert "lead page" in rows["7"][1]
     assert "Please fill out the form completely" in rows["8"][1]
-    assert len([c for c, w, _, _ in crm.posted if w == "call"]) == 19
+    assert "Outbound Call" in rows["3"][1] and "Outbound Call" in rows["4"][1]
+    calls = [c for c, w, _, _ in crm.posted if w == "call"]
+    assert len(calls) == 19 and len(set(calls)) == 19  # each once, never twice
     assert state["app"].snapshot()["error"] is None and errors == []

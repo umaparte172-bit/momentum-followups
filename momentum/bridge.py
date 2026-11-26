@@ -143,7 +143,8 @@ class Bridge:
                     raise BridgeError("The browser did not answer in time. Check the Momentum tab and try again.")
                 self.cond.wait(left)
             answer = self.results.pop(cid)
-            self.timings.append({"command": args.get("fn") or name, "seconds": round(time.monotonic() - started, 1), "ok": answer["ok"]})
+            self.timings.append({"command": args.get("fn") or name, "seconds": round(time.monotonic() - started, 1), "ok": answer["ok"],
+                                 "error": None if answer["ok"] else str(answer.get("error") or "")[:300]})
         if not answer["ok"]:
             raise BridgeError(answer["error"] or "The browser reported an error")
         return answer["value"]

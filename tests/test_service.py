@@ -97,12 +97,30 @@ class ServiceTests(unittest.TestCase):
         rows = self.run_preview(p, dry_run=False, authorization="SEND APPROVED EMAILS")
         self.assertEqual(rows[0]["status"], "sent")
 
-    def test_uncertain_stops_batch(self):
+    def test_one_uncertain_send_does_not_stop_the_batch(self):
+        # Each unconfirmed send stays blocked (never sent twice) and the batch goes on with the next lead.
         self.app.config.update(mode="live", verified=True)
         self.app.factory = Demo
         self.app.ledger.set_meta(self.app.verification_key, "test verified")
         rows = self.run_preview(self.preview(["1", "2"]), dry_run=False, authorization="SEND APPROVED EMAILS")
-        self.assertEqual([r["status"] for r in rows], ["uncertain", "skipped"])
+        self.assertEqual([r["status"] for r in rows], ["uncertain", "uncertain"])
+        self.assertTrue(all(self.app.ledger.blocked({"id": r["id"], "email": r.get("email", "")}) for r in rows))
+
+    def test_three_unconfirmed_sends_in_a_row_stop_the_batch(self):
+        # Several in a row means Momentum itself is not saving: then it stops rather than keep clicking.
+        self.app.config.update(mode="live", verified=True)
+        self.app.factory = Demo
+        self.app.ledger.set_meta(self.app.verification_key, "test verified")
+        rows = self.run_preview(self.preview(["1", "2", "4", "5", "6"]), dry_run=False, authorization="SEND APPROVED EMAILS")
+        self.assertEqual([r["status"] for r in rows], ["uncertain", "uncertain", "uncertain", "skipped", "skipped"])
+        self.assertIn("several actions in a row", self.app.snapshot()["error"])
+
+    def test_an_old_extension_blocks_a_live_batch(self):
+        self.app.config.update(mode="live", verified=True, connection="bridge")
+        self.app.bridge.status = lambda: {"outdated": True, "version": "1.13.2", "expected_version": "1.16.0"}
+        p = self.preview(["1"])
+        with self.assertRaisesRegex(ValueError, r"old Momentum Bridge \(1\.13\.2\).*needs 1\.16\.0.*Nothing was sent"):
+            self.app.run("tab-one", {"preview_id": p["id"], "dry_run": False, "authorization": "SEND APPROVED EMAILS"})
 
     def test_daily_boundary_in_dealership_timezone(self):
         from datetime import datetime
